@@ -1,0 +1,106 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html {
+  background: #0b0f1a;
+}
+
+body {
+  min-height: 100vh;
+  background:
+    radial-gradient(1100px 500px at 85% -10%, rgba(124, 92, 255, 0.16), transparent 60%),
+    radial-gradient(900px 420px at -10% 0%, rgba(247, 37, 133, 0.1), transparent 55%),
+    #0b0f1a;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
+}
+
+#root {
+  min-height: 100vh;
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.hero-title {
+  background: linear-gradient(92deg, #a78bfa 5%, #f472b6 55%, #34d399 105%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.glass {
+  background: rgba(20, 26, 44, 0.72);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.fade-up {
+  animation: fadeUp 0.45s ease both;
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulseGlow {
+  0%,
+  100% {
+    box-shadow: 0 0 24px -10px rgba(251, 191, 36, 0.55);
+  }
+  50% {
+    box-shadow: 0 0 38px -6px rgba(251, 191, 36, 0.85);
+  }
+}
+
+.pin-card {
+  animation: pulseGlow 3.2s ease-in-out infinite;
+}
+
+.stars-select svg {
+  transition: transform 0.12s ease;
+}
+.stars-select:active svg {
+  transform: scale(1.25);
+}
+
+.eq-bar {
+  display: inline-block;
+  width: 3px;
+  margin-right: 2px;
+  border-radius: 2px;
+  background: currentColor;
+  animation: eq 0.9s ease-in-out infinite;
+}
+.eq-bar:nth-child(2) {
+  animation-delay: 0.2s;
+}
+.eq-bar:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes eq {
+  0%,
+  100% {
+    height: 6px;
+  }
+  50% {
+    height: 14px;
+  }
+}
