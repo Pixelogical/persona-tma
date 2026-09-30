@@ -3,7 +3,9 @@ import logging
 from typing import Optional
 
 from aiogram import Bot, Dispatcher
+from aiogram.client.default import DefaultBotProperties
 from aiogram.client.session.aiohttp import AiohttpSession
+from aiogram.enums import ParseMode
 from aiogram.types import BotCommand
 
 from config import settings
@@ -29,7 +31,10 @@ def playlist_lock(playlist_id: int) -> asyncio.Lock:
 
 def build_bot() -> Bot:
     global bot
-    kwargs = {"token": settings.bot_token}
+    kwargs = {
+        "token": settings.bot_token,
+        "default": DefaultBotProperties(parse_mode=ParseMode.HTML),
+    }
     if settings.proxy:
         log.info("Using proxy: %s", settings.proxy.split("@")[-1])
         kwargs["session"] = AiohttpSession(proxy=settings.proxy)
@@ -44,6 +49,7 @@ async def setup_bot() -> None:
     _bot = build_bot()
     dp.include_router(router)
     try:
+        await _bot.get_me()  # cache bot identity (username is used for deep links)
         await _bot.set_my_commands(
             [
                 BotCommand(command="start", description="Start PersonaBot"),

@@ -41,9 +41,7 @@ class Song(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     file_id: Mapped[str] = mapped_column(String(512))
-    file_unique_id: Mapped[str] = mapped_column(
-        String(255), unique=True, index=True
-    )
+    file_unique_id: Mapped[str] = mapped_column(String(255), index=True)
     chat_id: Mapped[int] = mapped_column(Integer, index=True)
     message_id: Mapped[int] = mapped_column(Integer)
     chat_username: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)

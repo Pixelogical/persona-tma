@@ -5,8 +5,8 @@ A Telegram Mini App (TMA) for the **Persona** group, powered by **PersonaBot**.
 * Drop an **MP3** in the group → the bot grabs its metadata and puts it on the chart
 * Vote with **5 stars** — each vote earns the voter **1 point**
 * Chart tabs: **🔥 Trending · ✨ New · 🏆 Top**
-* **Playlists** — everyone's lists are public, press **Play** and the bot streams
-  every track (in order) into the group chat through itself
+* **Playlists** — everyone's lists are public, press **Play** and the bot sends
+  every track (in order) to your **private chat with the bot**
 * **Podium** of the top-3 voters; they can **📌 pin** a song for everyone —
   clicking a pinned card deep-links to that song's message in Telegram
 * User profiles = circle avatar with the person's initials
@@ -123,7 +123,7 @@ POST /api/pins                 {"song_id"} (top-3 only) — replaces your pin
 GET  /api/playlists            public playlists
 POST /api/playlists            create
 POST /api/playlists/{id}/songs / DELETE .../songs/{song_id}
-POST /api/playlists/{id}/play  bot forwards every track to the group, in order
+POST /api/playlists/{id}/play  sends every track to your DM with the bot, in order
 ```
 
 ## Rating logic

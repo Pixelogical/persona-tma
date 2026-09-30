@@ -211,7 +211,11 @@ async def start_playback(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Stream every track of the playlist into the group chat, in order."""
+    """Stream every track of the playlist into the user's DM with the bot."""
+    from aiogram.exceptions import TelegramForbiddenError
+
+    from bot.bot import get_bot
+
     pl = db.get(Playlist, playlist_id)
     if pl is None:
         raise HTTPException(status_code=404, detail="Playlist not found")
@@ -227,7 +231,30 @@ async def start_playback(
         raise HTTPException(
             status_code=409, detail="This playlist is already playing"
         )
-    background.add_task(play_playlist, playlist_id)
+
+    # the bot can only DM people who have opened it at least once —
+    # hand the frontend a deep link so it can redirect them to press Start.
+    # The bot auto-plays the playlist when they do (see bot/handlers.py).
+    try:
+        await get_bot().send_chat_action(user.id, "typing")
+    except TelegramForbiddenError:
+        try:
+            start_link = f"https://t.me/{get_bot().me.username}?start=play_{playlist_id}"
+        except Exception:
+            start_link = None
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "msg": "You need to press Start in the bot's private chat first",
+                "need_start": True,
+                "start_link": start_link,
+                "playlist_id": playlist_id,
+            },
+        )
+    except RuntimeError:
+        raise HTTPException(status_code=503, detail="Bot is not running")
+
+    background.add_task(play_playlist, playlist_id, user.id)
     return PlayOut(
         ok=True,
         playlist=pl.name,

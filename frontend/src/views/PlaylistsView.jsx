@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import api, { errMessage } from '../lib/api'
 import { displayName } from '../lib/format'
+import { handleNeedStart } from '../lib/play'
 import { haptic } from '../lib/telegram'
 import { useApp } from '../store'
 import Avatar from '../components/Avatar'
@@ -52,11 +53,11 @@ export default function PlaylistsView() {
     try {
       const { data } = await api.post(`/playlists/${pl.id}/play`)
       toast(
-        `▶️ “${data.playlist}” is playing in the group — ${data.started} track(s)`,
+        `📩 “${data.playlist}” — ${data.started} track(s) sent to your bot chat`,
         'success'
       )
     } catch (e) {
-      toast(errMessage(e), 'error')
+      if (!handleNeedStart(e, toast)) toast(errMessage(e), 'error')
     } finally {
       setPlayBusy(null)
     }
@@ -70,8 +71,8 @@ export default function PlaylistsView() {
             Playlists
           </h2>
           <p className="text-[10px] text-base-content/40 mt-0.5">
-            Public to the whole group — press play and the bot streams it into
-            the chat
+            Public to the whole group — press play and the bot sends the
+            tracks to your private chat with it
           </p>
         </div>
         <button
@@ -130,7 +131,7 @@ export default function PlaylistsView() {
                 onClick={() => quickPlay(pl)}
                 disabled={playBusy === pl.id}
                 className="btn btn-sm btn-circle bg-gradient-to-br from-primary to-secondary border-0 text-white self-end shadow-glow"
-                title="Play in group chat"
+                title="Send tracks to your chat with the bot"
               >
                 {playBusy === pl.id ? (
                   <span className="loading loading-spinner loading-xs" />

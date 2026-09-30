@@ -18,35 +18,30 @@ from models import Playlist
 log = logging.getLogger("persona.play")
 
 
-async def _send_song(chat_id: int, song) -> bool:
-    """Resend the track as the bot (falls back to forwarding the original)."""
+async def _send_song(user_id: int, song) -> bool:
+    """Resend the track to the user's DM (falls back to forwarding the original)."""
     bot = get_bot()
-    try:
-        await bot.send_audio(
-            chat_id=chat_id,
-            audio=song.file_id,
-            title=song.title,
-            performer=song.artist or None,
-        )
-        return True
-    except TelegramRetryAfter as e:
-        await asyncio.sleep(e.retry_after + 0.5)
+    for attempt in (1, 2):
         try:
             await bot.send_audio(
-                chat_id=chat_id,
+                chat_id=user_id,
                 audio=song.file_id,
                 title=song.title,
                 performer=song.artist or None,
             )
             return True
+        except TelegramRetryAfter as e:
+            if attempt == 1:
+                await asyncio.sleep(e.retry_after + 0.5)
+                continue
         except TelegramAPIError:
-            pass
-    except TelegramAPIError:
-        pass
+            break
 
     try:
         await bot.forward_message(
-            chat_id=chat_id, from_chat_id=song.chat_id, message_id=song.message_id
+            chat_id=user_id,
+            from_chat_id=song.chat_id,
+            message_id=song.message_id,
         )
         return True
     except (TelegramAPIError, TelegramForbiddenError, TelegramBadRequest) as exc:
@@ -54,8 +49,8 @@ async def _send_song(chat_id: int, song) -> bool:
         return False
 
 
-async def play_playlist(playlist_id: int) -> dict:
-    """Stream every song of a playlist into the group chat, in order."""
+async def play_playlist(playlist_id: int, user_id: int) -> dict:
+    """Stream every song of a playlist into the user's private chat with the bot."""
     db = SessionLocal()
     try:
         playlist = db.get(Playlist, playlist_id)
@@ -77,26 +72,40 @@ async def play_playlist(playlist_id: int) -> dict:
         return {"ok": False, "error": "empty", "playlist": name, "started": 0}
 
     async with playlist_lock(playlist_id):
-        chat_id = songs[0].chat_id
         bot = get_bot()
 
         if settings.play_intro:
             try:
                 await bot.send_message(
-                    chat_id,
-                    f"▶️ Now playing: <b>{name}</b> — {len(songs)} track(s)",
+                    user_id,
+                    f"▶️ Now playing <b>{name}</b> — {len(songs)} track(s) 🎧",
                 )
-            except TelegramAPIError:
-                pass
+            except TelegramAPIError as exc:
+                log.warning("intro message failed: %s", exc)
 
         started = skipped = 0
         for index, song in enumerate(songs):
             if index:
                 await asyncio.sleep(settings.play_song_interval)
-            if await _send_song(chat_id, song):
+            if await _send_song(user_id, song):
                 started += 1
             else:
                 skipped += 1
+
+        try:
+            await bot.send_message(
+                user_id, f"✅ Playlist <b>{name}</b> finished ({started} tracks)."
+            )
+        except TelegramAPIError:
+            pass
+
+        log.info(
+            "playlist %s streamed to user %s: %s sent, %s skipped",
+            playlist_id,
+            user_id,
+            started,
+            skipped,
+        )
         return {
             "ok": started > 0,
             "playlist": name,

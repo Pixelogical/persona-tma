@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import api, { errMessage } from '../lib/api'
 import { useApp } from '../store'
 import { haptic } from '../lib/telegram'
@@ -20,15 +20,29 @@ export default function ChartView() {
   const [addSong, setAddSong] = useState(null)
   const [pinnedBusy, setPinnedBusy] = useState(false)
 
+  const prevTab = useRef(tab)
   useEffect(() => {
     let cancelled = false
-    if (!songs) setSongs(null)
-    api
-      .get('/songs', { params: { tab } })
-      .then((r) => !cancelled && setSongs(r.data.songs))
-      .catch(() => !cancelled && setSongs([]))
+    if (prevTab.current !== tab) {
+      prevTab.current = tab
+      setSongs(null) // skeleton only when switching tabs
+    }
+    const load = () =>
+      api
+        .get('/songs', { params: { tab } })
+        .then((r) => !cancelled && setSongs(r.data.songs))
+        .catch(() => !cancelled && setSongs((s) => s ?? []))
+    load()
+    // poll so tracks shared in the group appear without a manual refresh
+    const timer = setInterval(() => {
+      if (!document.hidden) load()
+    }, 15000)
+    const onVisible = () => !document.hidden && load()
+    document.addEventListener('visibilitychange', onVisible)
     return () => {
       cancelled = true
+      clearInterval(timer)
+      document.removeEventListener('visibilitychange', onVisible)
     }
   }, [tab, rev])
 

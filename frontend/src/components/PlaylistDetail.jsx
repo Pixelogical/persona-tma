@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import api, { errMessage } from '../lib/api'
+import { handleNeedStart } from '../lib/play'
 import { useApp } from '../store'
 import { displayName, formatDuration } from '../lib/format'
 import Avatar from './Avatar'
@@ -43,11 +44,11 @@ export default function PlaylistDetail({ playlistId, onClose, onDeleted }) {
     try {
       const { data } = await api.post(`/playlists/${playlistId}/play`)
       toast(
-        `▶️ Playing “${data.playlist}” in the group — ${data.started} track(s)`,
+        `📩 “${data.playlist}” — ${data.started} track(s) sent to your chat with the bot`,
         'success'
       )
     } catch (e) {
-      toast(errMessage(e), 'error')
+      if (!handleNeedStart(e, toast)) toast(errMessage(e), 'error')
     } finally {
       setPlaying(false)
     }
@@ -100,7 +101,7 @@ export default function PlaylistDetail({ playlistId, onClose, onDeleted }) {
                     <path d="M8 5v14l11-7z" />
                   </svg>
                 )}
-                Play in group chat
+                Play in my chat
               </button>
               {playlist.is_mine && (
                 <button
