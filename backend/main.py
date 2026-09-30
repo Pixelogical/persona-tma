@@ -28,13 +28,23 @@ async def lifespan(_: FastAPI):
     init_db()
     log.info("Database ready")
 
-    if settings.persona_chat_id and settings.persona_chat_id > 0:
-        log.warning(
-            "PERSONA_CHAT_ID=%s looks like a USER id, not a group id — "
-            "group songs will be ignored! Group ids are negative (-100...). "
-            "Leave it empty to accept all chats.",
+    if settings.search_type == 1:
+        log.info(
+            "Ingest matching: by GROUP_NAME = %r", settings.group_name or "(any)"
+        )
+    elif settings.persona_chat_id:
+        log.info(
+            "Ingest matching: by chat id = %s (also accepts its -100/short form)",
             settings.persona_chat_id,
         )
+        if settings.persona_chat_id > 0:
+            log.warning(
+                "PERSONA_CHAT_ID=%s looks like a USER id, not a group id — "
+                "group songs will be ignored! Group ids are negative.",
+                settings.persona_chat_id,
+            )
+    else:
+        log.info("Ingest matching: all chats accepted")
 
     poll_task = None
     if settings.bot_token and not settings.disable_polling:

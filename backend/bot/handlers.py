@@ -160,15 +160,51 @@ async def ingest_audio(message: Message) -> None:
         log.exception("failed to ingest message %s", message.message_id)
 
 
+def _chat_id_candidates(cid: int) -> set:
+    """Return the id as-is plus its sibling form across the -100 prefix.
+
+    The same group can appear as a basic-group id (-3784999585) or as a
+    supergroup id (-1003784999585). Both must be treated as equal.
+    """
+    bare = str(cid).lstrip("-")
+    if bare.startswith("100"):
+        return {cid, int("-" + bare[3:])}
+    return {cid, int("-100" + bare)}
+
+
+def _chat_matches(message: Message) -> bool:
+    """Decide whether an audio in this chat should be ingested."""
+    chat = message.chat
+    if chat.type == "private":
+        # DMs are always accepted (playlists are delivered here)
+        return True
+
+    if settings.search_type == 1:
+        # match by group title
+        if not settings.group_name:
+            return True
+        return (chat.title or "").strip() == settings.group_name.strip()
+
+    # search_type == 0 -> match by chat id (supergroup-prefix tolerant)
+    if settings.persona_chat_id in (None, 0):
+        return True
+    if chat.id in _chat_id_candidates(settings.persona_chat_id):
+        return True
+
+    log.info(
+        "ignoring audio in chat id=%s title=%r (search_type=0, "
+        "PERSONA_CHAT_ID=%s — set SEARCH_TYPE=1 + GROUP_NAME to match by name)",
+        chat.id,
+        chat.title,
+        settings.persona_chat_id,
+    )
+    return False
+
+
 async def _ingest(message: Message) -> None:
     if not message.from_user or message.from_user.is_bot:
         return
-    is_private = message.chat.type == "private"
-    if (
-        not is_private
-        and settings.persona_chat_id
-        and message.chat.id != settings.persona_chat_id
-    ):
+    if not _chat_matches(message):
         return
 
     meta = extract_meta(message)
