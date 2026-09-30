@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     )
 
     # ---------------- Telegram ----------------
-    bot_token: str = ""
+    bot_token: str = "1858481331:AAFYDXqiWrnxegbgZRL6fp6EOT5VP2mCzYs"
     api_id: int = 0
     api_hash: str = ""
 
@@ -27,10 +27,10 @@ class Settings(BaseSettings):
     proxy_url: str = ""
 
     # Only ingest audio from this chat when set (e.g. -1001234567890)
-    persona_chat_id: Optional[int] = None
+    persona_chat_id: Optional[int] = 692803443
     # Permanent invite link for private groups, used to build message links
     chat_link_template: str = ""
-    webapp_url: str = ""
+    webapp_url: str = "https://excuse-oval-ear-bacteria.trycloudflare.com"
 
     # ---------------- Database ----------------
     database_url: str = "sqlite:///./data/persona.db"

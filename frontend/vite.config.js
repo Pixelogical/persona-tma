@@ -13,6 +13,18 @@ const proxy = {
 // public URL is enough for both browser and Telegram Mini App.
 export default defineConfig({
   plugins: [react()],
-  server: { port: 3000, host: true, strictPort: true, proxy },
-  preview: { port: 3000, host: true, strictPort: true, proxy },
+  server: {
+    port: 3000,
+    host: true,
+    strictPort: true,
+    proxy,
+    allowedHosts: ['.trycloudflare.com'], // Or set `allowedHosts: true` to allow all hosts
+  },
+  preview: {
+    port: 3000,
+    host: true,
+    strictPort: true,
+    proxy,
+    allowedHosts: ['.trycloudflare.com'],
+  },
 })
