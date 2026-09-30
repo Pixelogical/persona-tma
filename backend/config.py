@@ -6,7 +6,6 @@ Every value can be overridden through environment variables or a
 from pathlib import Path
 from typing import List, Optional
 
-from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -20,21 +19,18 @@ class Settings(BaseSettings):
     )
 
     # ---------------- Telegram ----------------
-    # NEVER hardcode the token here — put it in backend/.env (gitignored)
-    bot_token: str = ""
+    bot_token: str = "1858481331:AAFYDXqiWrnxegbgZRL6fp6EOT5VP2mCzYs"
     api_id: int = 0
     api_hash: str = ""
 
     use_proxy: bool = False
     proxy_url: str = ""
 
-    # Only ingest audio from this chat when set. MUST be the GROUP id,
-    # which is always NEGATIVE (e.g. -1001234567890). A positive id is a
-    # private user chat. Leave empty to accept any chat (recommended).
-    persona_chat_id: Optional[int] = None
+    # Only ingest audio from this chat when set (e.g. -1001234567890)
+    persona_chat_id: Optional[int] = -3784999585
     # Permanent invite link for private groups, used to build message links
     chat_link_template: str = ""
-    webapp_url: str = ""
+    webapp_url: str = "https://excuse-oval-ear-bacteria.trycloudflare.com"
 
     # ---------------- Database ----------------
     database_url: str = "sqlite:///./data/persona.db"
@@ -52,14 +48,6 @@ class Settings(BaseSettings):
     play_song_interval: float = 1.5
     play_max_songs: int = 50
     play_intro: bool = True
-
-    @field_validator("persona_chat_id", mode="before")
-    @classmethod
-    def _empty_is_none(cls, v):
-        # PERSONA_CHAT_ID= (blank in .env) must mean "disabled", not a crash
-        if isinstance(v, str) and not v.strip():
-            return None
-        return v
 
     @property
     def proxy(self) -> Optional[str]:
