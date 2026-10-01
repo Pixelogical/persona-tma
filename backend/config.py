@@ -38,7 +38,7 @@ class Settings(BaseSettings):
     group_name: str = "Persona"
     # Permanent invite link for private groups, used to build message links
     chat_link_template: str = ""
-    webapp_url: str = "https://excuse-oval-ear-bacteria.trycloudflare.com"
+    webapp_url: str = "https://tma.pixelhs.ir"
 
     # ---------------- Database ----------------
     database_url: str = "sqlite:///./data/persona.db"

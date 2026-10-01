@@ -18,13 +18,13 @@ export default defineConfig({
     host: true,
     strictPort: true,
     proxy,
-    allowedHosts: ['.trycloudflare.com'], // Or set `allowedHosts: true` to allow all hosts
+    allowedHosts: ['tma.pixelhs.ir'], // Or set `allowedHosts: true` to allow all hosts
   },
   preview: {
     port: 3000,
     host: true,
     strictPort: true,
     proxy,
-    allowedHosts: ['.trycloudflare.com'],
+    allowedHosts: ['tma.pixelhs.ir'],
   },
 })
