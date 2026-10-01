@@ -1,0 +1,29 @@
+APP
+│
+├── Background
+│   └── #090A0F
+│
+├── Surfaces
+│   ├── #11131A
+│   ├── #181B23
+│   └── #20232D
+│
+├── Content
+│   ├── #F3F1F2
+│   ├── #B4B0B5
+│   └── #77737B
+│
+├── Brand
+│   ├── #C83D4A
+│   ├── #D94B57
+│   └── #9E2D3A
+│
+├── Secondary
+│   ├── #A66A73
+│   └── #E08A92
+│
+└── Semantic
+    ├── Success → #35B779
+    ├── Warning → #E5A93D
+    ├── Error   → #E05260
+    └── Info    → #4D8DCC
