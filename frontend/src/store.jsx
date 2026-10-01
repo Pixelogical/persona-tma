@@ -69,6 +69,20 @@ export function AppProvider({ children }) {
   }, [])
 
   const bootstrap = useCallback(async () => {
+    // 1) INSIDE the Mini App: always sign in as the Telegram account that
+    //    opened it. Never reuse a stored token, never show the dev picker.
+    if (isTMA()) {
+      try {
+        await loginWithTelegram()
+        return
+      } catch {
+        clearToken()
+        setStatus('error')
+        return
+      }
+    }
+
+    // 2) OUTSIDE Telegram (plain browser): reuse a stored session if valid.
     const token = getToken()
     if (token) {
       try {
@@ -80,15 +94,8 @@ export function AppProvider({ children }) {
         clearToken()
       }
     }
-    if (isTMA()) {
-      try {
-        await loginWithTelegram()
-        return
-      } catch {
-        setStatus('error')
-        return
-      }
-    }
+
+    // 3) OUTSIDE Telegram only: browser dev login (backend must allow it).
     try {
       const { data } = await api.get('/auth/config')
       setAllowDev(data.allow_dev_login)

@@ -1,14 +1,28 @@
-const tg = typeof window !== 'undefined' ? window.Telegram?.WebApp : undefined
+// Resolve the Telegram WebApp object lazily at CALL time (not module-load
+// time) so we never miss it if telegram-web-app.js executes slightly later.
+const getTg = () =>
+  typeof window !== 'undefined' ? window.Telegram?.WebApp : undefined
 
 export function isTMA() {
-  return !!(tg && tg.initData && tg.initData.length > 0)
+  const t = getTg()
+  if (!t) return false
+  // initData is non-empty only when opened inside a real Telegram client.
+  return (
+    (typeof t.initData === 'string' && t.initData.length > 0) ||
+    !!t.initDataUnsafe?.user
+  )
 }
 
 export function tgInitData() {
-  return tg?.initData || ''
+  return getTg()?.initData || ''
+}
+
+export function getTelegramUser() {
+  return getTg()?.initDataUnsafe?.user || null
 }
 
 export function initTelegram() {
+  const tg = getTg()
   if (!tg) return
   try {
     tg.ready()
@@ -26,6 +40,7 @@ export function initTelegram() {
 }
 
 export function haptic(kind = 'light') {
+  const tg = getTg()
   try {
     if (kind === 'success') tg?.HapticFeedback?.notificationOccurred('success')
     else if (kind === 'error') tg?.HapticFeedback?.notificationOccurred('error')
@@ -37,6 +52,7 @@ export function haptic(kind = 'light') {
 
 export function openLink(url) {
   if (!url) return
+  const tg = getTg()
   if (tg?.openTelegramLink) {
     try {
       const res = tg.openTelegramLink(url)
@@ -49,7 +65,7 @@ export function openLink(url) {
 }
 
 export function backButton(onClick) {
-  const btn = tg?.BackButton
+  const btn = getTg()?.BackButton
   if (!btn) return () => {}
   btn.onClick(onClick)
   btn.show()
