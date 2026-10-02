@@ -15,8 +15,12 @@ def validate_tma_init_data(init_data: str) -> Optional[dict]:
     if not init_data or not settings.bot_token:
         return None
 
-    # values must be URL-decoded before building the check string
-    params = dict(parse_qsl(init_data))
+    # values must be URL-decoded before building the check string.
+    # keep_blank_values=True is REQUIRED: Telegram signs over every field,
+    # including empty ones (e.g. query_id=, start_param=). The default
+    # parser drops them, which breaks the hash for clients that send empty
+    # fields — notably Telegram Desktop (Android omits them, so it worked).
+    params = dict(parse_qsl(init_data, keep_blank_values=True))
     hash_hex = params.pop("hash", None)
     if not hash_hex:
         return None

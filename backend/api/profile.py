@@ -1,6 +1,7 @@
 import logging
 import time
-from typing import List
+from io import BytesIO
+from typing import List, Tuple
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from fastapi.responses import Response
@@ -27,7 +28,9 @@ router = APIRouter(prefix="/api", tags=["profile"])
 
 # served by main.py under /api/static/avatars (goes through the /api proxy)
 AVATAR_DIR = BASE_DIR / "data" / "avatars"
-AVATAR_MAX_BYTES = 2 * 1024 * 1024  # 2 MB
+AVATAR_MAX_BYTES = 12 * 1024 * 1024  # max size of the UPLOADED file
+AVATAR_SIDE = 288  # stored as a square this big — plenty for every UI slot
+AVATAR_QUALITY = 82
 AVATAR_TYPES = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp"}
 
 
@@ -85,6 +88,42 @@ def update_profile(
     return _profile_out(db, user, user)
 
 
+def _shrink_avatar(data: bytes, original_ext: str) -> Tuple[bytes, str]:
+    """Center-crop to a square, downscale and re-encode so the stored file is
+    small (volume) and fits the UI. Falls back to the original bytes when
+    Pillow is unavailable or the image can't be decoded."""
+    try:
+        from PIL import Image, ImageOps
+    except Exception:  # Pillow not installed — keep the original upload
+        return data, original_ext
+    try:
+        im = Image.open(BytesIO(data))
+        im = ImageOps.exif_transpose(im)  # respect phone rotation metadata
+        if im.mode in ("RGBA", "LA", "PA") or (
+            im.mode == "P" and "transparency" in im.info
+        ):
+            bg = Image.new("RGBA", im.size, (17, 19, 26, 255))  # app surface
+            im = Image.alpha_composite(bg, im.convert("RGBA"))
+        im = im.convert("RGB")
+        w, h = im.size
+        side = max(1, min(w, h))
+        left, top = (w - side) // 2, (h - side) // 2
+        im = im.crop((left, top, left + side, top + side)).resize(
+            (AVATAR_SIDE, AVATAR_SIDE), Image.LANCZOS
+        )
+        out = BytesIO()
+        try:
+            im.save(out, "WEBP", quality=AVATAR_QUALITY, method=4)
+            return out.getvalue(), ".webp"
+        except Exception:  # WEBP unavailable in this build → JPEG
+            out = BytesIO()
+            im.save(out, "JPEG", quality=AVATAR_QUALITY, optimize=True, progressive=True)
+            return out.getvalue(), ".jpg"
+    except Exception as exc:
+        log.warning("avatar shrink failed (%s) — storing original", exc)
+        return data, original_ext
+
+
 @router.post("/me/avatar", response_model=UserOut)
 async def upload_avatar(
     file: UploadFile,
@@ -100,7 +139,12 @@ async def upload_avatar(
     if not data:
         raise HTTPException(status_code=400, detail="Empty file")
     if len(data) > AVATAR_MAX_BYTES:
-        raise HTTPException(status_code=413, detail="Image too large (max 2 MB)")
+        raise HTTPException(
+            status_code=413, detail=f"Image too large (max {AVATAR_MAX_BYTES // (1024 * 1024)} MB)"
+        )
+
+    # shrink to a tidy square thumbnail (volume + UI fit)
+    data, ext = _shrink_avatar(data, ext)
 
     AVATAR_DIR.mkdir(parents=True, exist_ok=True)
     # replace the previous picture

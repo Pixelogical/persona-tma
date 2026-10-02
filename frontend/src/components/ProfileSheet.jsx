@@ -256,8 +256,8 @@ export default function ProfileSheet({ userId, rev }) {
     const file = e.target.files?.[0]
     e.target.value = ''
     if (!file || uploading) return
-    if (file.size > 2 * 1024 * 1024) {
-      toast('Image too large (max 2 MB)', 'error')
+    if (file.size > 12 * 1024 * 1024) {
+      toast('Image too large (max 12 MB)', 'error')
       return
     }
     setUploading(true)
