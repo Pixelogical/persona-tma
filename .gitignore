@@ -10,7 +10,6 @@ frontend/dist/
 
 # local data & secrets
 backend/data/
-backend/.env
 *.db
 *.sqlite3
 
