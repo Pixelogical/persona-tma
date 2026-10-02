@@ -112,7 +112,7 @@ export default function App() {
           </main>
 
           <footer className="text-center pb-28 -mt-16 text-[11px] text-base-content/30 font-medium">
-            Created with <span className="text-primary">❤</span> by Pixel
+            Persona Assistant v1.1 beta • Created with <span className="text-primary">❤</span> by Pixel
           </footer>
 
           <div className="fixed bottom-0 inset-x-0 z-40 mx-auto max-w-[640px] pb-[max(env(safe-area-inset-bottom),12px)] px-6">
