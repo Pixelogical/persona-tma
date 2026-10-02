@@ -63,8 +63,10 @@ def _sign(payload: bytes) -> bytes:
 
 
 def create_session_token(user_id: int) -> str:
+    # ~permanent sessions: the Mini App re-issues this silently on every
+    # open inside Telegram, and stored tokens survive a year outside it.
     payload = _b64encode(
-        json.dumps({"uid": user_id, "exp": int(time.time()) + 30 * 86400}).encode()
+        json.dumps({"uid": user_id, "exp": int(time.time()) + 365 * 86400}).encode()
     )
     return f"{payload}.{_b64encode(_sign(payload.encode()))}"
 

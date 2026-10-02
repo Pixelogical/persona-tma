@@ -63,9 +63,11 @@ Required in `backend/.env`:
 * `USE_PROXY=true` + `PROXY_URL=http://user:pass@host:port` (or `socks5://…`) to
   reach Telegram through an HTTP/SOCKS proxy
 * optional `PERSONA_CHAT_ID=-100…` to only ingest songs from the Persona group
-* `ALLOW_DEV_LOGIN=true` lets you open the URL in a **normal browser** and pick
-  a test user (turn it off in production — inside Telegram real TMA auth with
-  HMAC verification of `initData` is always used)
+* `ALLOW_DEV_LOGIN=false` — users are signed in **permanently with their
+  Telegram account only** (no login screen, no sign-out, no switching).
+  Flip it to `true` temporarily if you must test in a plain browser
+  (inside Telegram real TMA auth with HMAC verification of `initData` is
+  always used)
 
 > ⚠️ For pinned-song deep links (`https://t.me/<group>/<message_id>`) to work,
 > the group must be **public** (have a @username). For private groups the bot

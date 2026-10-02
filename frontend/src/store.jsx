@@ -16,10 +16,8 @@ export const useApp = () => useContext(AppCtx)
 let toastId = 0
 
 export function AppProvider({ children }) {
-  const [status, setStatus] = useState('loading') // loading | login | ready | error
+  const [status, setStatus] = useState('loading') // loading | ready | error
   const [me, setMe] = useState(null)
-  const [devUsers, setDevUsers] = useState([])
-  const [allowDev, setAllowDev] = useState(false)
   const [toasts, setToasts] = useState([])
   const [rev, setRev] = useState(0) // bump to refresh dependent views
   const [profileUserId, setProfileUserId] = useState(null) // open profile modal
@@ -54,24 +52,10 @@ export function AppProvider({ children }) {
     applySession(data)
   }, [applySession])
 
-  const loginAs = useCallback(
-    async (payload) => {
-      const { data } = await api.post('/auth/dev-login', payload)
-      applySession(data)
-      return data.user
-    },
-    [applySession]
-  )
-
-  const logout = useCallback(() => {
-    clearToken()
-    setMe(null)
-    setStatus('login')
-  }, [])
-
   const bootstrap = useCallback(async () => {
-    // 1) INSIDE the Mini App: always sign in as the Telegram account that
-    //    opened it. Never reuse a stored token, never show the dev picker.
+    // 1) INSIDE the Mini App: always, silently and permanently signed in as
+    //    the Telegram account that opened it. There is no login screen and
+    //    no way to switch or sign out — this is the only way in.
     if (isTMA()) {
       try {
         await loginWithTelegram()
@@ -83,7 +67,8 @@ export function AppProvider({ children }) {
       }
     }
 
-    // 2) OUTSIDE Telegram (plain browser): reuse a stored session if valid.
+    // 2) OUTSIDE Telegram (plain browser link): reuse a still-valid stored
+    //    session (a year long) so returning visitors stay signed in too.
     const token = getToken()
     if (token) {
       try {
@@ -96,24 +81,8 @@ export function AppProvider({ children }) {
       }
     }
 
-    // 3) OUTSIDE Telegram only: browser dev login (backend must allow it).
-    try {
-      const { data } = await api.get('/auth/config')
-      setAllowDev(data.allow_dev_login)
-      if (data.allow_dev_login) {
-        try {
-          const users = await api.get('/auth/dev-users')
-          setDevUsers(users.data)
-        } catch {
-          setDevUsers([])
-        }
-        setStatus('login')
-      } else {
-        setStatus('error')
-      }
-    } catch {
-      setStatus('error')
-    }
+    // 3) No session and not inside Telegram → nothing to log into manually.
+    setStatus('error')
   }, [loginWithTelegram])
 
   useEffect(() => {
@@ -123,6 +92,8 @@ export function AppProvider({ children }) {
   }, [bootstrap])
 
   useEffect(() => {
+    // a lost/expired session silently re-signs in (Telegram only) —
+    // the user never sees a login screen.
     const onUnauthorized = () => {
       setMe(null)
       bootstrap()
@@ -137,33 +108,25 @@ export function AppProvider({ children }) {
       me,
       toasts,
       toast,
-      devUsers,
-      allowDev,
       rev,
       profileUserId,
       openProfile: (id) => setProfileUserId(id),
       closeProfile: () => setProfileUserId(null),
       refreshAll: () => setRev((r) => r + 1),
       refreshMe,
-      loginAs,
       loginWithTelegram,
       bootstrap,
-      logout,
     }),
     [
       status,
       me,
       toasts,
       toast,
-      devUsers,
-      allowDev,
       rev,
       profileUserId,
       refreshMe,
-      loginAs,
       loginWithTelegram,
       bootstrap,
-      logout,
     ]
   )
 

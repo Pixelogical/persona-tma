@@ -1,13 +1,12 @@
 import React, { useEffect, useState } from 'react'
 import api from '../lib/api'
 import { timeAgo } from '../lib/format'
-import { isTMA } from '../lib/telegram'
 import { useApp } from '../store'
 import ProfileSheet from '../components/ProfileSheet'
 import PlaylistDetail from '../components/PlaylistDetail'
 
 export default function ProfileView() {
-  const { me, logout, rev } = useApp()
+  const { me, rev } = useApp()
   const [playlists, setPlaylists] = useState([])
   const [openId, setOpenId] = useState(null)
 
@@ -69,12 +68,6 @@ export default function ProfileView() {
           </div>
         )}
       </section>
-
-      {!isTMA() && (
-        <button className="btn btn-sm btn-ghost text-error rounded-xl w-full" onClick={logout}>
-          Sign out
-        </button>
-      )}
 
       {openId && (
         <PlaylistDetail

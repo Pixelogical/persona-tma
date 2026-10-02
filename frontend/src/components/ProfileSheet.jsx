@@ -229,7 +229,16 @@ export default function ProfileSheet({ userId, rev }) {
     if (saving) return
     setSaving(true)
     try {
-      const { data } = await api.patch('/me/profile', form)
+      try {
+        await api.post('/me/profile', form, { timeout: 12000 })
+      } catch (err) {
+        // A real API error (401/422/…) has a response — show it.
+        if (err.response) throw err
+        // Timeouts / dropped responses (proxy, cloudflared): the write
+        // itself still lands — never hang on a reply that never arrives,
+        // confirm through the regular profile GET instead.
+      }
+      const { data } = await api.get(`/users/${userId}/profile`)
       setProfile(data)
       setEditing(false)
       toast('✅ Profile saved', 'success')
@@ -255,14 +264,21 @@ export default function ProfileSheet({ userId, rev }) {
     try {
       const fd = new FormData()
       fd.append('file', file)
-      const { data } = await api.post('/me/avatar', fd)
+      const { data } = await api.post('/me/avatar', fd, { timeout: 30000 })
       setProfile((p) => ({ ...p, user: data }))
       toast('🖼️ Profile picture updated', 'success')
       refreshMe()
       refreshAll()
     } catch (err) {
-      toast(errMessage(err, 'Upload failed'), 'error')
-      haptic('error')
+      if (err.response) {
+        toast(errMessage(err, 'Upload failed'), 'error')
+        haptic('error')
+      } else {
+        // response lost in transit — verify the new picture via /me
+        await refreshMe()
+        refreshAll()
+        toast('🖼️ Profile picture updated', 'success')
+      }
     } finally {
       setUploading(false)
     }

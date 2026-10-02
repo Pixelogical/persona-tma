@@ -69,7 +69,7 @@ def get_profile(
     return _profile_out(db, _get_user(db, user_id), user)
 
 
-@router.patch("/me/profile", response_model=ProfileOut)
+@router.api_route("/me/profile", methods=["POST", "PATCH"], response_model=ProfileOut)
 def update_profile(
     payload: ProfileUpdate,
     user: User = Depends(get_current_user),
