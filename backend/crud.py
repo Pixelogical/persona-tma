@@ -66,7 +66,6 @@ def song_to_out(
         id=song.id,
         title=song.title,
         artist=song.artist,
-        genre=song.genre,
         duration=song.duration,
         created_at=song.created_at,
         sender=UserBrief.model_validate(song.sender),
@@ -76,7 +75,6 @@ def song_to_out(
         link=message_link(song.chat_username, song.chat_id, song.message_id),
         listeners=song.listeners,
         cover=song.cover_url,
-        tags=[t for t in (song.tags or "").split(",") if t],
     )
 
 
@@ -97,46 +95,8 @@ def _bayesian(song: Song, global_avg: float, m: float = 3.0) -> float:
     return (v / (v + m)) * song.avg_rating + (m / (v + m)) * global_avg
 
 
-def _tag_list(song: Song) -> List[str]:
-    """Every tag the song carries (last.fm top tags), falling back to the
-    single genre column for rows enriched before tags existed."""
-    tags = [t.strip() for t in (song.tags or "").split(",") if t.strip()]
-    if not tags and song.genre and song.genre.strip():
-        tags = [song.genre.strip()]
-    return tags
-
-
-def song_genres(db: Session) -> List[dict]:
-    """Distinct genres across the chart with a song count, most-used first.
-    Built from ALL last.fm tags (not just the primary genre), grouped
-    case-insensitively, keeping the most common casing as the label."""
-    buckets: dict = {}
-    for song in _load_songs(db):
-        seen = set()
-        for raw in _tag_list(song):
-            name = raw.strip()
-            key = name.lower()
-            if not name or key in seen:
-                continue
-            seen.add(key)
-            bucket = buckets.setdefault(key, {"name": name, "count": 0})
-            bucket["count"] += 1
-    return sorted(
-        buckets.values(),
-        # the "nogenre" bucket always sits last, whatever its count
-        key=lambda b: (b["name"].lower() == "nogenre", -b["count"], b["name"].lower()),
-    )
-
-
-def _matches_genre(song: Song, genre: Optional[str]) -> bool:
-    if not genre:
-        return True
-    want = genre.strip().lower()
-    return any(t.lower() == want for t in _tag_list(song))
-
-
-def sort_songs(db: Session, tab: str, genre: Optional[str] = None) -> List[Song]:
-    songs = [s for s in _load_songs(db) if _matches_genre(s, genre)]
+def sort_songs(db: Session, tab: str) -> List[Song]:
+    songs = _load_songs(db)
     now = datetime.utcnow()
 
     if tab == "new":
@@ -173,9 +133,8 @@ def paginated_songs(
     me: Optional[User],
     limit: int,
     offset: int,
-    genre: Optional[str] = None,
 ) -> List[SongOut]:
-    ordered = sort_songs(db, tab, genre)[offset : offset + limit]
+    ordered = sort_songs(db, tab)[offset : offset + limit]
     return [song_to_out(db, s, me) for s in ordered]
 
 

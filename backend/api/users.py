@@ -1,7 +1,7 @@
 from typing import List
 
 import logging
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -75,15 +75,6 @@ def telegram_login(payload: TelegramLoginIn, db: Session = Depends(get_db)):
 @router.get("/auth/config")
 def auth_config():
     return {"allow_dev_login": settings.allow_dev_login}
-
-
-@router.get("/auth/lastfm-probe")
-async def lastfm_probe(artist: str = Query(...), track: str = Query(...)):
-    """One live request from THIS server to last.fm for the given track,
-    echoing exactly what the API returned and how it was parsed."""
-    from lastfm import probe
-
-    return await probe(artist=artist, track=track)
 
 
 @router.get("/auth/dev-users")

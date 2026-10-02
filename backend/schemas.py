@@ -60,7 +60,6 @@ class SongOut(BaseModel):
     id: int
     title: str
     artist: Optional[str] = None
-    genre: Optional[str] = None
     duration: int = 0
     created_at: datetime
     sender: SenderOut
@@ -70,17 +69,11 @@ class SongOut(BaseModel):
     link: Optional[str] = None
     listeners: Optional[int] = None  # global listeners (last.fm)
     cover: Optional[str] = None  # cover art url (last.fm)
-    tags: List[str] = []  # last.fm top tags
 
 
 class SongListOut(BaseModel):
     tab: str
     songs: List[SongOut]
-
-
-class GenreOut(BaseModel):
-    name: str
-    count: int
 
 
 class VoteIn(BaseModel):

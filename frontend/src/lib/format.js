@@ -12,12 +12,6 @@ export function initials(user) {
   return (parts[0]?.[0] || '?').toUpperCase()
 }
 
-// The backend buckets songs last.fm has no tags for under "nogenre".
-export function genreLabel(name) {
-  if (!name) return ''
-  return name.toLowerCase() === 'nogenre' ? 'No genre' : name
-}
-
 const PALETTE = [
   'from-[#C83D4A] to-[#9E2D3A]',
   'from-[#D94B57] to-[#A66A73]',

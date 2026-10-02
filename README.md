@@ -4,9 +4,9 @@ A Telegram Mini App (TMA) for the **Persona** group, powered by **PersonaBot**.
 
 * Drop an **MP3** in the group → the bot grabs its metadata and puts it on the chart
   (a **duplicate** — same title & artist — is skipped)
-* Enriched automatically from **last.fm**: genres (top tags), cover art, global listeners
+* Enriched automatically from **last.fm**: cover art and global listeners
 * Vote with **5 stars** — each new vote earns the voter **1 point** (re-rating earns none)
-* Chart tabs: **🔥 Trending · ✨ New · 🏆 Top · 🎨 Genres** (a genre shows its songs by rating)
+* Chart tabs: **🔥 Trending · ✨ New · 🏆 Top**
 * **Playlists** — everyone's lists are public, press **Play** and the bot sends
   every track (in order) to your **private chat with the bot**
 * **Podium** of the top-3 voters; they can **📌 pin** a song for everyone —
@@ -17,6 +17,7 @@ A Telegram Mini App (TMA) for the **Persona** group, powered by **PersonaBot**.
 
 ```
 persona/
+├── docker-compose.yml  ← one-command production run
 ├── backend/            FastAPI + aiogram
 │   ├── .env.example    ← copy to .env and edit (token, proxy, …)
 │   ├── config.py       every setting in one place
@@ -75,6 +76,25 @@ Required in `backend/.env`:
 
 ## 2 · Run
 
+### With Docker (easiest)
+
+One command starts both API+bot and the Mini App (nginx serves `dist` and
+proxies `/api` → backend, exactly like the vite proxy):
+
+```bash
+docker compose up -d --build
+docker compose logs -f backend     # watch the bot
+```
+
+* `:3000` → frontend (point cloudflared / your reverse proxy here, unchanged)
+* `:8080` → backend API (also reachable directly)
+* config is read from `backend/.env` (never baked into the image); SQLite +
+  avatars live in the mounted `backend/data/` folder
+* inside the container the backend must keep `PORT=8080` (nginx proxies there);
+  files created by the containers are owned by root on the host
+
+### Manually (two terminals)
+
 Two terminals (backend :8080, frontend :3000):
 
 ```bash
@@ -120,8 +140,8 @@ POST /api/auth/telegram        verify WebApp initData → session token
 POST /api/auth/dev-login       browser testing (when ALLOW_DEV_LOGIN)
 GET  /api/me                   profile, points, rank, is_top3
 GET  /api/users/top            podium (top 3 voters)
-GET  /api/songs?tab=trending   chart (trending | new | top) — optional &genre=
-GET  /api/songs/genres         available genres with song counts
+GET  /api/songs?tab=trending   chart (trending | new | top)
+POST /api/songs/{id}/reenrich  re-run last.fm cover/listeners lookup for one song
 POST /api/songs/{id}/vote      {"value": 1..5} → +1 point (0 when re-rating)
 GET  /api/users/{id}/profile   profile: stats + 3 recent songs + types
 PATCH /api/me/profile          bio / MBTI / enneagram / socionics

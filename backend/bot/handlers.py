@@ -278,7 +278,7 @@ async def _ingest(message: Message) -> None:
     finally:
         db.close()
 
-    # enrich with genre tags / cover / listeners from last.fm (best-effort)
+    # enrich with cover / listeners from last.fm (best-effort)
     if settings.lastfm_enabled and settings.lastfm_api_key:
         from lastfm import enrich_song
 

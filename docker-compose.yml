@@ -1,0 +1,39 @@
+name: persona
+
+services:
+  backend:
+    build: ./backend
+    image: persona-backend
+    container_name: persona-backend
+    # BOT_TOKEN, proxy settings, last.fm key, … all come from backend/.env
+    # (the file itself is never baked into the image)
+    env_file: ./backend/.env
+    volumes:
+      # sqlite db + uploaded avatars survive rebuilds
+      - ./backend/data:/app/data
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://127.0.0.1:8080/api/health', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  frontend:
+    build: ./frontend
+    image: persona-frontend
+    container_name: persona-frontend
+    ports:
+      # point your reverse proxy / tunnel here, as before
+      - "3000:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
