@@ -1,5 +1,6 @@
 from typing import List
 
+import logging
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -18,6 +19,8 @@ from schemas import (
     UserBrief,
 )
 from security import create_session_token, validate_tma_init_data
+
+log = logging.getLogger("persona.auth")
 
 router = APIRouter(prefix="/api", tags=["users"])
 
@@ -53,6 +56,11 @@ def _issue(db: Session, user: User) -> TokenOut:
 def telegram_login(payload: TelegramLoginIn, db: Session = Depends(get_db)):
     tg_user = validate_tma_init_data(payload.init_data)
     if not tg_user:
+        raw = payload.init_data or ""
+        fields = sorted({c.split("=", 1)[0] for c in raw.split("&") if c})
+        log.warning(
+            "TMA login rejected: %d chars, fields=%s", len(raw), fields
+        )
         raise HTTPException(status_code=401, detail="Invalid Telegram init data")
     user = get_or_create_user(
         db,

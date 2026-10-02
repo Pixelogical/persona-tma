@@ -78,6 +78,9 @@ class Song(Base):
     listeners: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     cover_url: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
     tags: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    enriched_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime, nullable=True
+    )  # last enrichment attempt (success or not) — drives retry backoff
 
     sender_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     created_at: Mapped[datetime] = mapped_column(

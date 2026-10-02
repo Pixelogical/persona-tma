@@ -14,7 +14,10 @@ export function isTMA() {
 }
 
 export function tgInitData() {
-  return getTg()?.initData || ''
+  const t = getTg()
+  // Telegram Desktop sometimes fills initDataRaw while initData is empty —
+  // send whichever the client provided.
+  return t?.initData || t?.initDataRaw || ''
 }
 
 export function getTelegramUser() {

@@ -13,6 +13,7 @@ from api import api_router
 from bot.bot import dp, setup_bot
 from config import BASE_DIR, settings
 from database import init_db
+from lastfm import run_enrichment_scheduler
 
 logging.basicConfig(
     level=logging.INFO,
@@ -58,8 +59,16 @@ async def lifespan(_: FastAPI):
             "Bot polling is disabled (set BOT_TOKEN / DISABLE_POLLING in .env)"
         )
 
+    # retry last.fm enrichment for songs that had no luck at ingest time
+    enrich_task = None
+    if settings.lastfm_enabled and settings.lastfm_api_key:
+        enrich_task = asyncio.create_task(run_enrichment_scheduler())
+        log.info("last.fm backfill scheduler started")
+
     yield
 
+    if enrich_task:
+        enrich_task.cancel()
     if poll_task:
         poll_task.cancel()
         try:

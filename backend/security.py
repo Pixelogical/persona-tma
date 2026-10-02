@@ -4,10 +4,37 @@ import hashlib
 import hmac
 import json
 import time
-from typing import Optional
-from urllib.parse import parse_qsl
+from typing import Iterator, Optional
+from urllib.parse import parse_qsl, unquote, unquote_plus
 
 from config import settings
+
+
+def _pairs(init_data: str):
+    out = []
+    for chunk in init_data.split("&"):
+        if not chunk:
+            continue
+        key, _, value = chunk.partition("=")
+        if key in ("hash", "secret") or not key:
+            continue
+        out.append((key, value))
+    return out
+
+
+def _check_candidates(init_data: str) -> Iterator[str]:
+    """Telegram clients encode initData values inconsistently: Android is
+    effectively single-encoded, Desktop/Web double-encodes (the docs say to
+    decode values TWICE). Try every interpretation; an HMAC-SHA256 match on
+    any of them can only come from a genuine Telegram signature."""
+    raw = _pairs(init_data)
+    yield "\n".join(f"{k}={v}" for k, v in sorted(raw))
+    yield "\n".join(
+        f"{k}={unquote_plus(v)}" for k, v in sorted(raw)
+    )
+    yield "\n".join(
+        f"{k}={unquote_plus(unquote(v))}" for k, v in sorted(raw)
+    )
 
 
 def validate_tma_init_data(init_data: str) -> Optional[dict]:
@@ -15,41 +42,49 @@ def validate_tma_init_data(init_data: str) -> Optional[dict]:
     if not init_data or not settings.bot_token:
         return None
 
-    # values must be URL-decoded before building the check string.
-    # keep_blank_values=True is REQUIRED: Telegram signs over every field,
-    # including empty ones (e.g. query_id=, start_param=). The default
-    # parser drops them, which breaks the hash for clients that send empty
-    # fields — notably Telegram Desktop (Android omits them, so it worked).
+    # keep_blank_values=True is REQUIRED: empty fields (query_id=,
+    # start_param=) are part of the signature — Desktop sends them.
     params = dict(parse_qsl(init_data, keep_blank_values=True))
-    hash_hex = params.pop("hash", None)
+    hash_hex = (params.pop("hash", None) or "").strip()
     if not hash_hex:
         return None
 
-    data_check_string = "\n".join(
-        f"{k}={v}" for k, v in sorted(params.items())
-    )
     secret_key = hmac.new(
         b"WebAppData", settings.bot_token.encode("utf-8"), hashlib.sha256
     ).digest()
-    computed = hmac.new(
-        secret_key, data_check_string.encode("utf-8"), hashlib.sha256
-    ).hexdigest()
-
-    if not hmac.compare_digest(computed, hash_hex):
+    verified = any(
+        hmac.compare_digest(
+            hmac.new(secret_key, cand.encode("utf-8"), hashlib.sha256).hexdigest(),
+            hash_hex,
+        )
+        for cand in _check_candidates(init_data)
+    )
+    if not verified:
         return None
 
-    # Reject stale logins (24h)
+    # Reject clearly ancient logins. Kept generous (7 days): Telegram Desktop
+    # reuses one initData blob for a long time, so a tight window would lock
+    # desktop users out while Android keeps working.
     try:
-        if params.get("auth_date") and time.time() - int(params["auth_date"]) > 86400:
+        if params.get("auth_date") and time.time() - int(params["auth_date"]) > 7 * 86400:
             return None
     except ValueError:
         return None
 
-    try:
-        user = json.loads(params.get("user", ""))
-    except (json.JSONDecodeError, TypeError):
-        return None
+    user = _parse_user_field(params.get("user", ""))
     return user if user and "id" in user else None
+
+
+def _parse_user_field(raw: str) -> Optional[dict]:
+    """The `user` JSON may be single- or double-encoded depending on client."""
+    for attempt in (raw, unquote_plus(raw), unquote_plus(unquote(raw))):
+        try:
+            user = json.loads(attempt)
+        except (json.JSONDecodeError, TypeError):
+            continue
+        if isinstance(user, dict) and "id" in user:
+            return user
+    return None
 
 
 def _b64encode(raw: bytes) -> str:
