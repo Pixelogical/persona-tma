@@ -2,16 +2,17 @@
 
 Usage (from the backend dir / container /app):
 
-    python import_songs.py songs.json [--enrich]
+    python import_songs.py songs.json [--no-enrich]
 
 Reads every message with "media_type": "audio_file" (the export tree is
 walked recursively, so results.json / individual chat files both work)
 and inserts them exactly like bot/handlers._ingest does:
 same norm_key duplicate skip, get_or_create_user for the sender, etc.
 
---enrich additionally runs the last.fm lookup (cover + listeners) for
-each newly added song, 1 req/sec. Without it the scheduler in main.py
-will backfill enrichment on its own.
+After each insert the song is immediately enriched through the app's own
+lastfm module (cover art + global listeners from last.fm, 1 req/sec).
+Respects LASTFM_ENABLED / LASTFM_API_KEY from .env; --no-enrich skips it
+(main.py's backfill scheduler will then pick the songs up on its own).
 
 NOTE: the export has no Telegram file_id, so imported songs show on the
 chart but cannot be sent by the bot's playlist "Play" feature.
@@ -21,6 +22,7 @@ import asyncio
 import json
 import re
 import sys
+import time
 from datetime import datetime
 from pathlib import Path
 
@@ -60,13 +62,30 @@ def parse_created_at(msg: dict) -> datetime:
         return datetime.utcnow()
 
 
+def enrich_now(db, song: Song) -> None:
+    """Fetch cover art + global listeners right after the insert using the
+    app's own lastfm module (no-op unless LASTFM_ENABLED + API key are set)."""
+    from lastfm import enrich_song
+
+    try:
+        asyncio.run(enrich_song(song.id))
+    except Exception as exc:  # enrichment must never abort the import
+        print(f"  ! last.fm lookup failed: {exc}")
+        return
+    db.refresh(song)
+    cover = "cover ✓" if song.cover_url else "no cover"
+    listeners = f"{song.listeners:,} listeners" if song.listeners else "no listeners"
+    print(f"  🌐 last.fm: {cover} · {listeners}")
+    time.sleep(1.1)  # last.fm rate limit
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("json_file", help="Telegram export JSON (songs.json)")
     ap.add_argument(
-        "--enrich",
+        "--no-enrich",
         action="store_true",
-        help="fetch cover/listeners from last.fm for new songs",
+        help="skip the inline last.fm cover/listeners lookup",
     )
     ap.add_argument(
         "--chat-username",
@@ -86,7 +105,7 @@ def main() -> int:
     chat_id = settings.persona_chat_id or 0
 
     db = SessionLocal()
-    added, new_ids = 0, []
+    added = 0
     try:
         for msg in messages:
             title = (msg.get("title") or "").strip()
@@ -128,25 +147,14 @@ def main() -> int:
             db.add(song)
             db.commit()
             db.refresh(song)
-            new_ids.append(song.id)
             added += 1
             print(f"added #{song.id:<8}: {title} — {artist}")
+            if not args.no_enrich:
+                enrich_now(db, song)
     finally:
         db.close()
 
     print(f"\nimported {added} song(s)")
-
-    if args.enrich and new_ids:
-        from lastfm import enrich_song
-
-        async def run() -> None:
-            for song_id in new_ids:
-                await enrich_song(song_id)
-                await asyncio.sleep(1.1)  # last.fm rate limit
-
-        asyncio.run(run())
-        print("enrichment done")
-
     return 0
 
 

@@ -49,3 +49,5 @@ docker compose run --rm \
   -v "$PWD/songs.json:/app/songs.json" \
   -v "$PWD/backend/import_songs.py:/app/import_songs.py" \
   backend python import_songs.py songs.json --enrich --chat-username PersonaGroupUsername
+
+
