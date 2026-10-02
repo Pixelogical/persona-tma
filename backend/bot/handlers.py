@@ -4,7 +4,6 @@ import asyncio
 import html
 import logging
 import re
-import time
 from typing import Optional, Tuple
 
 from aiogram import F, Router
@@ -75,7 +74,7 @@ def chart_kb() -> Optional[InlineKeyboardMarkup]:
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text="🎧 Open Chart", web_app=WebAppInfo(url=settings.webapp_url)
+                    text="Open Persona", web_app=WebAppInfo(url=settings.webapp_url)
                 )
             ]
         ]
@@ -309,10 +308,8 @@ async def _ingest(message: Message) -> None:
 
 # ---------------- DM quote-of-the-day ----------------
 # Users land in the DM from the Mini App's "Play" button and often just type
-# something. Answer every non-command private message with the time.ir quote.
-
-_QUOTE_TTL_SECONDS = 30 * 60
-_quote_cache: dict = {}  # {"data": {...}, "ts": float}
+# something. Answer every non-command private message with a FRESH time.ir
+# quote (no caching — a repeat quote is not acceptable).
 
 
 def _is_plain_message(message: Message) -> bool:
@@ -322,33 +319,24 @@ def _is_plain_message(message: Message) -> bool:
     return not (message.text or "").startswith("/")
 
 
-async def _cached_quote() -> Optional[dict]:
-    quote = _quote_cache.get("data")
-    if quote and time.time() - _quote_cache.get("ts", 0) < _QUOTE_TTL_SECONDS:
-        return quote
+async def _fresh_quote() -> Optional[dict]:
     from scrape_quote import scrape_quote  # requests-based -> keep off the loop
 
     try:
         loop = asyncio.get_running_loop()
-        fresh = await loop.run_in_executor(
-            None, scrape_quote, "https://time.ir/"
-        )  # run_in_executor: works on any py3 version
-    except Exception:  # network/parse hiccup: serve the stale quote if any
+        return await loop.run_in_executor(None, scrape_quote, "https://time.ir/")
+    except Exception:  # network/parse hiccup
         log.exception("time.ir quote scrape failed")
-        return quote
-    if fresh:
-        _quote_cache.update(data=fresh, ts=time.time())
-        return fresh
-    return quote
+        return None
 
 
 @router.message(F.chat.type == "private", _is_plain_message)
 async def dm_quote_of_the_day(message: Message) -> None:
     if message.from_user and message.from_user.is_bot:
         return
-    quote = await _cached_quote()
+    quote = await _fresh_quote()
     if not quote:
-        await message.answer(
+        await message.reply(
             "🙈 Quote service is unreachable right now — try again in a minute.",
             reply_markup=chart_kb(),
         )
