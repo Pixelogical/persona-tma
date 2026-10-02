@@ -1,8 +1,30 @@
 import React, { useState } from 'react'
-import { displayName, formatDuration, timeAgo } from '../lib/format'
+import { useApp } from '../store'
+import { displayName, formatCount, formatDuration, timeAgo } from '../lib/format'
 import { haptic } from '../lib/telegram'
 import Avatar from './Avatar'
 import StarRating, { StarsDisplay } from './StarRating'
+
+function Cover({ song }) {
+  const [broken, setBroken] = useState(false)
+  if (song.cover && !broken) {
+    return (
+      <img
+        src={song.cover}
+        alt=""
+        loading="lazy"
+        referrerPolicy="no-referrer"
+        onError={() => setBroken(true)}
+        className="w-11 h-11 rounded-xl object-cover border border-base-content/10 shrink-0"
+      />
+    )
+  }
+  return (
+    <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-primary/40 to-secondary/30 border border-base-content/10 flex items-center justify-center text-base shrink-0">
+      🎵
+    </div>
+  )
+}
 
 export default function SongCard({
   song,
@@ -13,6 +35,7 @@ export default function SongCard({
   onPin,
   busy = false,
 }) {
+  const { openProfile } = useApp()
   const [localStars, setLocalStars] = useState(song.my_vote || 0)
   const [voting, setVoting] = useState(false)
 
@@ -49,6 +72,8 @@ export default function SongCard({
           {top3 ? ['🥇', '🥈', '🥉'][rank - 1] : `#${rank}`}
         </div>
 
+        <Cover song={song} />
+
         <div className="min-w-0 flex-1">
           <div className="font-bold text-[15px] leading-tight truncate">
             {song.title}
@@ -59,14 +84,35 @@ export default function SongCard({
             {formatDuration(song.duration) ? ` · ${formatDuration(song.duration)}` : ''}
           </div>
           <div className="flex items-center gap-1.5 mt-1.5">
-            <Avatar user={song.sender} size={5} />
-            <span className="text-[10px] text-base-content/45 truncate max-w-[110px]">
-              {displayName(song.sender)}
-            </span>
+            <button
+              className="flex items-center gap-1.5 min-w-0 rounded-lg hover:bg-base-content/5 px-1 -mx-1"
+              title="View sender's profile"
+              onClick={(e) => {
+                e.stopPropagation()
+                haptic('light')
+                openProfile(song.sender.id)
+              }}
+            >
+              <Avatar user={song.sender} size={5} />
+              <span className="text-[10px] text-base-content/45 truncate max-w-[110px]">
+                {displayName(song.sender)}
+              </span>
+            </button>
             <span className="text-[9px] text-base-content/30">·</span>
             <span className="text-[10px] text-base-content/40">
               {timeAgo(song.created_at)}
             </span>
+            {formatCount(song.listeners) && (
+              <>
+                <span className="text-[9px] text-base-content/30">·</span>
+                <span
+                  className="text-[10px] text-secondary font-semibold whitespace-nowrap"
+                  title="Global listeners on last.fm"
+                >
+                  🌐 {formatCount(song.listeners)} global listeners
+                </span>
+              </>
+            )}
           </div>
         </div>
 

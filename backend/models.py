@@ -1,3 +1,4 @@
+import re
 from datetime import datetime
 from typing import List, Optional
 
@@ -13,6 +14,17 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from database import Base
 
+_WS_RE = re.compile(r"\s+")
+
+
+def normalize_meta(value: Optional[str]) -> str:
+    return _WS_RE.sub(" ", (value or "").strip()).casefold()
+
+
+def norm_key(title: Optional[str], artist: Optional[str]) -> str:
+    """Stable key used to detect duplicate songs (same title + artist)."""
+    return f"{normalize_meta(title)}|{normalize_meta(artist)}"
+
 
 class User(Base):
     __tablename__ = "users"
@@ -23,6 +35,13 @@ class User(Base):
     last_name: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
     points: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    # profile extras
+    bio: Mapped[Optional[str]] = mapped_column(String(280), nullable=True)
+    avatar: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    mbti: Mapped[str] = mapped_column(String(4), default="XXXX", nullable=False)
+    enneagram: Mapped[str] = mapped_column(String(3), default="XwX", nullable=False)
+    socionics: Mapped[str] = mapped_column(String(3), default="XXX", nullable=False)
 
     votes: Mapped[List["Vote"]] = relationship(back_populates="user")
     songs: Mapped[List["Song"]] = relationship(back_populates="sender")
@@ -50,6 +69,15 @@ class Song(Base):
     artist: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     genre: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
     duration: Mapped[int] = mapped_column(Integer, default=0)
+
+    # duplicate detection (same normalized title + artist)
+    norm_key: Mapped[Optional[str]] = mapped_column(
+        String(512), nullable=True, index=True
+    )
+    # last.fm enrichment
+    listeners: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    cover_url: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
+    tags: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
 
     sender_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     created_at: Mapped[datetime] = mapped_column(
@@ -140,3 +168,20 @@ class Pin(Base):
 
     song: Mapped["Song"] = relationship()
     pinned_by: Mapped["User"] = relationship()
+
+
+class ProfileComment(Base):
+    __tablename__ = "profile_comments"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    profile_user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id"), index=True
+    )
+    author_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    text: Mapped[str] = mapped_column(String(280))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, index=True
+    )
+
+    profile_user: Mapped["User"] = relationship(foreign_keys=[profile_user_id])
+    author: Mapped["User"] = relationship(foreign_keys=[author_id])

@@ -22,6 +22,7 @@ export function AppProvider({ children }) {
   const [allowDev, setAllowDev] = useState(false)
   const [toasts, setToasts] = useState([])
   const [rev, setRev] = useState(0) // bump to refresh dependent views
+  const [profileUserId, setProfileUserId] = useState(null) // open profile modal
   const bootRef = useRef(false)
 
   const toast = useCallback((msg, type = 'info') => {
@@ -139,6 +140,9 @@ export function AppProvider({ children }) {
       devUsers,
       allowDev,
       rev,
+      profileUserId,
+      openProfile: (id) => setProfileUserId(id),
+      closeProfile: () => setProfileUserId(null),
       refreshAll: () => setRev((r) => r + 1),
       refreshMe,
       loginAs,
@@ -154,6 +158,7 @@ export function AppProvider({ children }) {
       devUsers,
       allowDev,
       rev,
+      profileUserId,
       refreshMe,
       loginAs,
       loginWithTelegram,

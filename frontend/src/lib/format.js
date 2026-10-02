@@ -13,14 +13,14 @@ export function initials(user) {
 }
 
 const PALETTE = [
-  'from-violet-500 to-fuchsia-500',
-  'from-sky-500 to-indigo-500',
-  'from-emerald-500 to-teal-500',
-  'from-amber-500 to-orange-500',
-  'from-rose-500 to-pink-500',
-  'from-cyan-500 to-blue-500',
-  'from-lime-500 to-green-500',
-  'from-purple-500 to-pink-500',
+  'from-[#C83D4A] to-[#9E2D3A]',
+  'from-[#D94B57] to-[#A66A73]',
+  'from-[#A66A73] to-[#E08A92]',
+  'from-[#4D8DCC] to-[#26415C]',
+  'from-[#35B779] to-[#1C6B49]',
+  'from-[#E5A93D] to-[#8F641F]',
+  'from-[#3F4452] to-[#77737B]',
+  'from-[#E05260] to-[#7A2530]',
 ]
 
 export function avatarGradient(user) {
@@ -35,6 +35,13 @@ export function formatDuration(seconds) {
   const m = Math.floor(seconds / 60)
   const s = seconds % 60
   return `${m}:${String(s).padStart(2, '0')}`
+}
+
+export function formatCount(n) {
+  if (!n || n < 1) return null
+  if (n >= 1e6) return `${(n / 1e6).toFixed(n >= 1e7 ? 0 : 1).replace(/\.0$/, '')}M`
+  if (n >= 1e3) return `${(n / 1e3).toFixed(n >= 1e4 ? 0 : 1).replace(/\.0$/, '')}k`
+  return String(n)
 }
 
 export function timeAgo(dateStr) {

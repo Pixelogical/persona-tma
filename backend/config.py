@@ -57,6 +57,13 @@ class Settings(BaseSettings):
     play_max_songs: int = 50
     play_intro: bool = True
 
+    # ---------------- last.fm ----------------
+    # track.getinfo needs only the API key (the shared secret is kept here
+    # for future write methods). Registered to: pixelhs / app "persona".
+    lastfm_enabled: bool = True
+    lastfm_api_key: str = "63b36d947fd8fcb048a6dbd0f7b0dbf6"
+    lastfm_shared_secret: str = "6e6b238ca67ead1ff281d5c92f4aa259"
+
     @field_validator("persona_chat_id", mode="before")
     @classmethod
     def _blank_chat_id_is_none(cls, v):

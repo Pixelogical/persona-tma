@@ -3,15 +3,15 @@
 @tailwind utilities;
 
 html {
-  background: #0b0f1a;
+  background: #090a0f;
 }
 
 body {
   min-height: 100vh;
   background:
-    radial-gradient(1100px 500px at 85% -10%, rgba(124, 92, 255, 0.16), transparent 60%),
-    radial-gradient(900px 420px at -10% 0%, rgba(247, 37, 133, 0.1), transparent 55%),
-    #0b0f1a;
+    radial-gradient(1100px 500px at 85% -10%, rgba(200, 61, 74, 0.14), transparent 60%),
+    radial-gradient(900px 420px at -10% 0%, rgba(224, 138, 146, 0.07), transparent 55%),
+    #090a0f;
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior-y: none;
 }
@@ -23,17 +23,17 @@ body {
 }
 
 .hero-title {
-  background: linear-gradient(92deg, #a78bfa 5%, #f472b6 55%, #34d399 105%);
+  background: linear-gradient(92deg, #d94b57 5%, #e08a92 55%, #f3f1f2 105%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
 }
 
 .glass {
-  background: rgba(20, 26, 44, 0.72);
+  background: rgba(17, 19, 26, 0.72);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(243, 241, 242, 0.06);
 }
 
 .no-scrollbar::-webkit-scrollbar {
@@ -62,10 +62,10 @@ body {
 @keyframes pulseGlow {
   0%,
   100% {
-    box-shadow: 0 0 24px -10px rgba(251, 191, 36, 0.55);
+    box-shadow: 0 0 24px -10px rgba(229, 169, 61, 0.55);
   }
   50% {
-    box-shadow: 0 0 38px -6px rgba(251, 191, 36, 0.85);
+    box-shadow: 0 0 38px -6px rgba(229, 169, 61, 0.85);
   }
 }
 

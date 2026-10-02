@@ -45,6 +45,13 @@ def get_or_create_user(
     return user
 
 
+def find_duplicate(db: Session, key: str) -> Optional[Song]:
+    """Song already on the chart with the same normalized title + artist."""
+    if not key or key == "|":
+        return None
+    return db.scalar(select(Song).where(Song.norm_key == key))
+
+
 def song_to_out(
     db: Session, song: Song, me: Optional[User] = None
 ) -> SongOut:
@@ -67,6 +74,9 @@ def song_to_out(
         votes=song.vote_count,
         my_vote=my_vote,
         link=message_link(song.chat_username, song.chat_id, song.message_id),
+        listeners=song.listeners,
+        cover=song.cover_url,
+        tags=[t for t in (song.tags or "").split(",") if t],
     )
 
 
@@ -87,8 +97,33 @@ def _bayesian(song: Song, global_avg: float, m: float = 3.0) -> float:
     return (v / (v + m)) * song.avg_rating + (m / (v + m)) * global_avg
 
 
-def sort_songs(db: Session, tab: str) -> List[Song]:
-    songs = _load_songs(db)
+def song_genres(db: Session) -> List[dict]:
+    """Distinct genres across the chart with a song count, most-used first.
+    Groups case-insensitively and keeps the most common casing as the label."""
+    rows = db.execute(
+        select(Song.genre).where(Song.genre.isnot(None), Song.genre != "")
+    ).scalars()
+    buckets: dict = {}
+    for raw in rows:
+        name = raw.strip()
+        if not name:
+            continue
+        bucket = buckets.setdefault(name.lower(), {"name": name, "count": 0})
+        bucket["count"] += 1
+    return sorted(
+        buckets.values(), key=lambda b: (-b["count"], b["name"].lower())
+    )
+
+
+def _matches_genre(song: Song, genre: Optional[str]) -> bool:
+    if not genre:
+        return True
+    want = genre.strip().lower()
+    return (song.genre or "").strip().lower() == want
+
+
+def sort_songs(db: Session, tab: str, genre: Optional[str] = None) -> List[Song]:
+    songs = [s for s in _load_songs(db) if _matches_genre(s, genre)]
     now = datetime.utcnow()
 
     if tab == "new":
@@ -120,9 +155,14 @@ def sort_songs(db: Session, tab: str) -> List[Song]:
 
 
 def paginated_songs(
-    db: Session, tab: str, me: Optional[User], limit: int, offset: int
+    db: Session,
+    tab: str,
+    me: Optional[User],
+    limit: int,
+    offset: int,
+    genre: Optional[str] = None,
 ) -> List[SongOut]:
-    ordered = sort_songs(db, tab)[offset : offset + limit]
+    ordered = sort_songs(db, tab, genre)[offset : offset + limit]
     return [song_to_out(db, s, me) for s in ordered]
 
 

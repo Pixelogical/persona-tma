@@ -6,7 +6,7 @@ function Star({ filled, size }) {
     <svg
       viewBox="0 0 24 24"
       style={{ width: size, height: size }}
-      className={filled ? 'text-warning drop-shadow-[0_0_6px_rgba(251,191,36,0.6)]' : 'text-base-content/20'}
+      className={filled ? 'text-warning drop-shadow-[0_0_6px_rgba(229,169,61,0.6)]' : 'text-base-content/20'}
       fill="currentColor"
     >
       <path d="M12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />

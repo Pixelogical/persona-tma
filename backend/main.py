@@ -94,6 +94,13 @@ def health():
     }
 
 
+# uploaded profile pictures — under /api so the vite proxy covers it
+from api.profile import AVATAR_DIR  # noqa: E402
+
+AVATAR_DIR.mkdir(parents=True, exist_ok=True)
+app.mount("/api/static/avatars", StaticFiles(directory=AVATAR_DIR), name="avatars")
+
+
 # Serve the built frontend (npm run build) from the same process,
 # so a single tunnel/port can serve everything in production.
 if FRONTEND_DIST.is_dir():

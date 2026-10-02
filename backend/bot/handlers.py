@@ -17,9 +17,9 @@ from aiogram.types import (
 )
 
 from config import settings
-from crud import get_or_create_user
+from crud import find_duplicate, get_or_create_user
 from database import SessionLocal
-from models import Song
+from models import Song, norm_key
 
 log = logging.getLogger("persona.handlers")
 
@@ -214,6 +214,7 @@ async def _ingest(message: Message) -> None:
     fallback_artist, fallback_title = parse_name(meta["file_name"])
     title = meta["title"] or fallback_title or meta["file_name"] or "Unknown title"
     artist = meta["performer"] or fallback_artist
+    key = norm_key(title, artist)
 
     db = SessionLocal()
     try:
@@ -226,7 +227,32 @@ async def _ingest(message: Message) -> None:
         )
         sender_name = sender.display_name
 
-        # every sent mp3 becomes a new chart entry (re-sends included)
+        # duplicate = a song with the same normalized title + artist already
+        # on the chart → skip it, don't add a second entry.
+        dup = find_duplicate(db, key)
+        if dup is not None:
+            log.info(
+                "skipping duplicate #%s '%s' by %s (already chart song #%s)",
+                message.message_id,
+                title,
+                sender_name,
+                dup.id,
+            )
+            skip_note = (
+                "🔁 <b>Already on the chart</b> — "
+                f"<b>{html.escape(title)}</b>"
+                + (f" — {html.escape(artist)}" if artist else "")
+                + "\nSame title & artist, so I didn't add it twice."
+            )
+            try:
+                await message.reply(
+                    skip_note,
+                    link_preview_options=LinkPreviewOptions(is_disabled=True),
+                )
+            except Exception as exc:
+                log.warning("duplicate reply failed for msg %s: %s", message.message_id, exc)
+            return
+
         song = Song(
             file_id=meta["file_id"],
             file_unique_id=meta["file_unique_id"],
@@ -236,19 +262,27 @@ async def _ingest(message: Message) -> None:
             title=title[:255],
             artist=artist[:255] if artist else None,
             duration=meta["duration"],
+            norm_key=key,
             sender_id=sender.id,
         )
         db.add(song)
         db.commit()
+        song_id = song.id
         log.info(
             "registered song #%s '%s' by %s in chat %s",
-            song.id,
+            song_id,
             title,
             sender_name,
             message.chat.id,
         )
     finally:
         db.close()
+
+    # enrich with genre tags / cover / listeners from last.fm (best-effort)
+    if settings.lastfm_enabled and settings.lastfm_api_key:
+        from lastfm import enrich_song
+
+        asyncio.create_task(enrich_song(song_id))
 
     note = (
         "🎵 New track on the <b>Persona chart</b>!\n\n"

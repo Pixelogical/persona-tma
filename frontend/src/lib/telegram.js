@@ -27,12 +27,12 @@ export function initTelegram() {
   try {
     tg.ready()
     tg.expand()
-    tg.setHeaderColor?.('#0b0f1a')
-    tg.setBackgroundColor?.('#0b0f1a')
-    tg.setHeaderTextColor?.('#e8ebf4')
+    tg.setHeaderColor?.('#090a0f')
+    tg.setBackgroundColor?.('#090a0f')
+    tg.setHeaderTextColor?.('#f3f1f2')
     tg.applyThemeParams?.({
-      bg_color: '#0b0f1a',
-      secondary_bg_color: '#0b0f1a',
+      bg_color: '#090a0f',
+      secondary_bg_color: '#11131a',
     })
   } catch {
     /* running outside Telegram */

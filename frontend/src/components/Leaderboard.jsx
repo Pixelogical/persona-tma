@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import api from '../lib/api'
+import { useApp } from '../store'
 import { displayName } from '../lib/format'
 import Avatar from './Avatar'
 
@@ -10,6 +11,7 @@ const STYLES = {
 }
 
 export default function Leaderboard({ rev, me }) {
+  const { openProfile } = useApp()
   const [entries, setEntries] = useState([])
 
   useEffect(() => {
@@ -38,9 +40,13 @@ export default function Leaderboard({ rev, me }) {
                 className={`${st.order} flex flex-col items-center gap-1.5 w-1/3`}
               >
                 <div className="text-base leading-none">{st.crown}</div>
-                <div className="relative">
+                <button
+                  className="relative cursor-pointer"
+                  onClick={() => openProfile(e.user.id)}
+                  title="View profile"
+                >
                   <Avatar user={e.user} size={e.rank === 1 ? 14 : 12} className={`rounded-full ring-2 ${st.ring} ring-offset-2 ring-offset-base-200`} />
-                </div>
+                </button>
                 <div className="text-xs font-bold truncate max-w-full px-1">
                   {displayName(e.user)}
                 </div>

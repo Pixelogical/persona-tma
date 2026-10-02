@@ -3,8 +3,10 @@
 A Telegram Mini App (TMA) for the **Persona** group, powered by **PersonaBot**.
 
 * Drop an **MP3** in the group → the bot grabs its metadata and puts it on the chart
-* Vote with **5 stars** — each vote earns the voter **1 point**
-* Chart tabs: **🔥 Trending · ✨ New · 🏆 Top**
+  (a **duplicate** — same title & artist — is skipped)
+* Enriched automatically from **last.fm**: genres (top tags), cover art, global listeners
+* Vote with **5 stars** — each new vote earns the voter **1 point** (re-rating earns none)
+* Chart tabs: **🔥 Trending · ✨ New · 🏆 Top · 🎨 Genres** (a genre shows its songs by rating)
 * **Playlists** — everyone's lists are public, press **Play** and the bot sends
   every track (in order) to your **private chat with the bot**
 * **Podium** of the top-3 voters; they can **📌 pin** a song for everyone —
@@ -116,8 +118,14 @@ POST /api/auth/telegram        verify WebApp initData → session token
 POST /api/auth/dev-login       browser testing (when ALLOW_DEV_LOGIN)
 GET  /api/me                   profile, points, rank, is_top3
 GET  /api/users/top            podium (top 3 voters)
-GET  /api/songs?tab=trending   chart (trending | new | top)
-POST /api/songs/{id}/vote      {"value": 1..5} → +1 point
+GET  /api/songs?tab=trending   chart (trending | new | top) — optional &genre=
+GET  /api/songs/genres         available genres with song counts
+POST /api/songs/{id}/vote      {"value": 1..5} → +1 point (0 when re-rating)
+GET  /api/users/{id}/profile   profile: stats + 3 recent songs + types
+PATCH /api/me/profile          bio / MBTI / enneagram / socionics
+POST /api/me/avatar            upload profile picture (jpeg/png/webp ≤ 2 MB)
+GET  /api/users/{id}/comments  profile comments (public)
+POST /api/users/{id}/comments  {"text"} · DELETE /api/comments/{id} (author/owner)
 GET  /api/pins                 pinned cards (public)
 POST /api/pins                 {"song_id"} (top-3 only) — replaces your pin
 GET  /api/playlists            public playlists
@@ -132,5 +140,6 @@ POST /api/playlists/{id}/play  sends every track to your DM with the bot, in ord
 * **Trending** = star-weighted votes with exponential time decay + fresh-track boost
 * **New** = newest first
 
-Every saved vote gives the voter **1 point** — points drive the podium and the
-top-3 "pin power".
+Every new cast vote gives the voter **1 point** — points drive the podium and the
+top-3 "pin power". Editing a vote you already made updates the rating but gives
+no extra point.

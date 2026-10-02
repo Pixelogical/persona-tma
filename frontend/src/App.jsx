@@ -4,6 +4,7 @@ import ChartView from './views/ChartView'
 import LoginGate from './components/LoginGate'
 import PlaylistsView from './views/PlaylistsView'
 import ProfileView from './views/ProfileView'
+import ProfileModal from './components/ProfileModal'
 import Toasts from './components/Toasts'
 import Avatar from './components/Avatar'
 import { displayName } from './lib/format'
@@ -85,7 +86,7 @@ function Header({ view, setView }) {
 }
 
 export default function App() {
-  const { status, toasts } = useApp()
+  const { status, toasts, profileUserId, closeProfile } = useApp()
   const [view, setView] = useState('chart')
 
   return (
@@ -110,6 +111,10 @@ export default function App() {
             {view === 'profile' && <ProfileView />}
           </main>
 
+          <footer className="text-center pb-28 -mt-16 text-[11px] text-base-content/30 font-medium">
+            Created with <span className="text-primary">❤</span> by Pixel
+          </footer>
+
           <div className="fixed bottom-0 inset-x-0 z-40 mx-auto max-w-[640px] pb-[max(env(safe-area-inset-bottom),12px)] px-6">
             <div className="glass rounded-3xl px-2 py-1.5 flex justify-around shadow-card border border-base-content/10">
               {NAV.map((item) => (
@@ -131,6 +136,10 @@ export default function App() {
               ))}
             </div>
           </div>
+
+          {profileUserId && (
+            <ProfileModal userId={profileUserId} onClose={closeProfile} />
+          )}
         </>
       ) : (
         <LoginGate />

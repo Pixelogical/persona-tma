@@ -89,8 +89,68 @@ def _drop_legacy_unique() -> None:
     print("migrated: removed UNIQUE constraint on songs.file_unique_id")
 
 
+def _add_missing_columns() -> None:
+    """SQLite: create_all() never alters existing tables, so add columns that
+    arrived later (last.fm meta, duplicate key, profile fields) everywhere."""
+    from sqlalchemy import inspect
+    from sqlalchemy import text
+
+    insp = inspect(engine)
+    existing_tables = set(insp.get_table_names())
+    added = []
+    for table in Base.metadata.sorted_tables:
+        if table.name not in existing_tables:
+            continue  # brand-new table — create_all() already made it
+        existing = {c["name"] for c in insp.get_columns(table.name)}
+        for col in table.columns:
+            if col.name in existing:
+                continue
+            spec = f"{col.name} {col.type.compile(engine.dialect)}"
+            if not col.nullable:
+                # NOT NULL needs a default so old rows survive the ALTER
+                default = (
+                    col.default.arg
+                    if col.default is not None and col.default.is_scalar
+                    else None
+                )
+                if isinstance(default, str):
+                    safe = default.replace("'", "''")
+                    spec += f" DEFAULT '{safe}'"
+                elif isinstance(default, (int, float)):
+                    spec += f" DEFAULT {default}"
+            with engine.begin() as conn:
+                conn.execute(text(f"ALTER TABLE {table.name} ADD COLUMN {spec}"))
+            added.append(f"{table.name}.{col.name}")
+    if added:
+        print(f"migrated: added columns {added}")
+
+
+def _backfill_song_norm_keys() -> None:
+    """Give legacy songs their duplicate-detection key."""
+    from sqlalchemy import select
+
+    from models import Song, norm_key
+
+    db = SessionLocal()
+    try:
+        rows = db.scalars(
+            select(Song).where(
+                (Song.norm_key.is_(None)) | (Song.norm_key == "")
+            )
+        ).all()
+        for song in rows:
+            song.norm_key = norm_key(song.title, song.artist)
+        if rows:
+            db.commit()
+            print(f"backfilled norm_key for {len(rows)} songs")
+    finally:
+        db.close()
+
+
 def init_db() -> None:
     from models import Base as _  # noqa: F401  (register models)
 
     Base.metadata.create_all(bind=engine)
     _drop_legacy_unique()
+    _add_missing_columns()
+    _backfill_song_norm_keys()
