@@ -19,6 +19,31 @@ export default function ChartView() {
   const [songs, setSongs] = useState(null)
   const [addSong, setAddSong] = useState(null)
   const [pinnedBusy, setPinnedBusy] = useState(false)
+  const [query, setQuery] = useState('')
+  const [results, setResults] = useState(null)
+
+  const searching = query.trim().length > 0
+
+  useEffect(() => {
+    const q = query.trim()
+    if (!q) {
+      setResults(null)
+      return undefined
+    }
+    let cancelled = false
+    setResults(null)
+    // debounce so we don't hit the API on every keystroke
+    const timer = setTimeout(() => {
+      api
+        .get('/songs/search', { params: { q } })
+        .then((r) => !cancelled && setResults(r.data.songs))
+        .catch(() => !cancelled && setResults([]))
+    }, 300)
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+    }
+  }, [query, rev])
 
   const prevTab = useRef(tab)
   useEffect(() => {
@@ -82,6 +107,22 @@ export default function ChartView() {
 
   const countLabel = songs ? `${songs.length} track${songs.length === 1 ? '' : 's'}` : ''
 
+  const renderCards = (list, withRank) => (
+    <div className="space-y-3">
+      {list.map((song, i) => (
+        <SongCard
+          key={song.id}
+          song={song}
+          rank={withRank ? i + 1 : undefined}
+          isTop3={!!me?.is_top3}
+          onVote={handleVote}
+          onAdd={setAddSong}
+          onPin={handlePin}
+        />
+      ))}
+    </div>
+  )
+
   const renderSongs = () =>
     songs.length === 0 ? (
       <div className="glass rounded-3xl p-10 text-center">
@@ -93,20 +134,69 @@ export default function ChartView() {
         </p>
       </div>
     ) : (
-      <div className="space-y-3">
-        {songs.map((song, i) => (
-          <SongCard
-            key={song.id}
-            song={song}
-            rank={i + 1}
-            isTop3={!!me?.is_top3}
-            onVote={handleVote}
-            onAdd={setAddSong}
-            onPin={handlePin}
-          />
-        ))}
+      renderCards(songs, true)
+    )
+
+  const searchBar = (
+    <div className="relative">
+      <span className="absolute inset-y-0 left-3.5 flex items-center text-sm opacity-50">
+        🔍
+      </span>
+      <input
+        type="search"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder="Search songs or artists…"
+        dir="auto"
+        className="input input-bordered w-full rounded-2xl bg-base-200/80 border-base-content/10 pl-10 pr-10 text-sm focus:border-primary/50"
+      />
+      {query && (
+        <button
+          className="btn btn-xs btn-circle btn-ghost absolute inset-y-0 right-2 my-auto h-6 w-6"
+          title="Clear"
+          onClick={() => setQuery('')}
+        >
+          ✕
+        </button>
+      )}
+    </div>
+  )
+
+  if (searching) {
+    return (
+      <div className="px-4 pt-4 fade-up pb-28 space-y-4">
+        {searchBar}
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-bold tracking-wide text-base-content/70 uppercase">
+            Search results
+          </h2>
+          {results && (
+            <span className="text-[10px] text-base-content/40">
+              {results.length} match{results.length === 1 ? '' : 'es'}
+            </span>
+          )}
+        </div>
+        {results === null ? (
+          <div className="flex flex-col items-center py-16 gap-3">
+            <span className="loading loading-bars loading-md text-primary" />
+          </div>
+        ) : results.length === 0 ? (
+          <div className="glass rounded-3xl p-10 text-center">
+            <div className="text-4xl mb-3">🔍</div>
+            <div className="font-bold">No songs match “{query.trim()}”</div>
+            <p className="text-xs text-base-content/50 mt-1">
+              Try fewer words — both title and artist are searched.
+            </p>
+          </div>
+        ) : (
+          renderCards(results, false)
+        )}
+        {addSong && (
+          <AddToPlaylist song={addSong} onClose={() => setAddSong(null)} />
+        )}
       </div>
     )
+  }
 
   return (
     <div className="space-y-5 pb-28">
@@ -120,6 +210,8 @@ export default function ChartView() {
           </h2>
           <span className="text-[10px] text-base-content/40">{countLabel}</span>
         </div>
+
+        <div className="mb-4">{searchBar}</div>
 
         <div
           role="tablist"

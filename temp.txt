@@ -42,3 +42,10 @@ This XML file does not appear to have any style information associated with it. 
 
 
 https://ws.audioscrobbler.com/2.0/?method=track.getinfo&amp;artist=Morteza+Pashaei&amp;track=Daghighe+Haye+Akhar&amp;autocorrect=1&amp;format=json&amp;api_key=63b36d947fd8fcb048a6dbd0f7b0dbf6
+
+
+# from the persona/ folder, songs.json next to docker-compose.yml
+docker compose run --rm \
+  -v "$PWD/songs.json:/app/songs.json" \
+  -v "$PWD/backend/import_songs.py:/app/import_songs.py" \
+  backend python import_songs.py songs.json --enrich --chat-username PersonaGroupUsername

@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from api.deps import get_current_user
-from crud import paginated_songs, song_to_out
+from crud import paginated_songs, search_songs, song_to_out
 from database import get_db
 from models import Song, User, Vote
 from schemas import SongListOut, SongOut, VoteIn, VoteOut
@@ -26,6 +26,20 @@ def list_songs(
     return SongListOut(
         tab=tab,
         songs=paginated_songs(db, tab, user, limit, offset),
+    )
+
+
+@router.get("/search", response_model=SongListOut)
+def search(
+    q: str = Query(..., min_length=1, max_length=100),
+    limit: int = Query(50, ge=1, le=100),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    q = q.strip()
+    return SongListOut(
+        tab="search",
+        songs=search_songs(db, q, user, limit) if q else [],
     )
 
 

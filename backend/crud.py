@@ -2,11 +2,11 @@ import math
 from datetime import datetime, timedelta
 from typing import List, Optional
 
-from sqlalchemy import func, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import joinedload, selectinload
 from sqlalchemy.orm import Session
 
-from models import Pin, Song, User, Vote
+from models import Pin, Song, User, Vote, normalize_meta
 from schemas import SongOut, UserBrief
 from security import message_link
 
@@ -136,6 +136,53 @@ def paginated_songs(
 ) -> List[SongOut]:
     ordered = sort_songs(db, tab)[offset : offset + limit]
     return [song_to_out(db, s, me) for s in ordered]
+
+
+def _like_escape(token: str) -> str:
+    return token.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
+def search_songs(
+    db: Session, q: str, me: Optional[User], limit: int = 50
+) -> List[SongOut]:
+    """Token search over title + artist: every token must hit either field,
+    so "shoor iraj" finds tracks mentioning both words anywhere."""
+    tokens = [t for t in q.split() if t][:6]
+    if not tokens:
+        return []
+    clauses = []
+    for token in tokens:
+        like = f"%{_like_escape(token)}%"
+        clauses.append(
+            or_(
+                Song.title.ilike(like, escape="\\"),
+                Song.artist.ilike(like, escape="\\"),
+            )
+        )
+    songs = list(
+        db.scalars(
+            select(Song)
+            .where(and_(*clauses))
+            .options(
+                joinedload(Song.sender),
+                selectinload(Song.votes).joinedload(Vote.user),
+            )
+        ).all()
+    )
+
+    # relevance first: whole-query substring in title > in artist,
+    # then popularity (vote count), then freshness
+    ql = normalize_meta(q)
+    songs.sort(
+        key=lambda s: (
+            (3 if ql in normalize_meta(s.title) else 0)
+            + (2 if ql in normalize_meta(s.artist) else 0),
+            s.vote_count,
+            s.created_at,
+        ),
+        reverse=True,
+    )
+    return [song_to_out(db, s, me) for s in songs[:limit]]
 
 
 def top_user_ids(db: Session, n: int = 3) -> List[int]:

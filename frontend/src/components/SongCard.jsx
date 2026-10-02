@@ -64,13 +64,15 @@ export default function SongCard({
       }`}
     >
       <div className="flex items-center gap-3">
-        <div
-          className={`w-8 shrink-0 text-center font-black ${
-            top3 ? 'text-transparent bg-clip-text bg-gradient-to-b from-warning to-secondary text-lg' : 'text-base-content/30 text-base'
-          }`}
-        >
-          {top3 ? ['🥇', '🥈', '🥉'][rank - 1] : `#${rank}`}
-        </div>
+        {rank ? (
+          <div
+            className={`w-8 shrink-0 text-center font-black ${
+              top3 ? 'text-transparent bg-clip-text bg-gradient-to-b from-warning to-secondary text-lg' : 'text-base-content/30 text-base'
+            }`}
+          >
+            {top3 ? ['🥇', '🥈', '🥉'][rank - 1] : `#${rank}`}
+          </div>
+        ) : null}
 
         <Cover song={song} />
 

@@ -4,6 +4,7 @@ import asyncio
 import html
 import logging
 import re
+import time
 from typing import Optional, Tuple
 
 from aiogram import F, Router
@@ -304,3 +305,58 @@ async def _ingest(message: Message) -> None:
         )
     except Exception as exc:  # reply must never affect registration
         log.warning("ingest reply failed for msg %s: %s", message.message_id, exc)
+
+
+# ---------------- DM quote-of-the-day ----------------
+# Users land in the DM from the Mini App's "Play" button and often just type
+# something. Answer every non-command private message with the time.ir quote.
+
+_QUOTE_TTL_SECONDS = 30 * 60
+_quote_cache: dict = {}  # {"data": {...}, "ts": float}
+
+
+def _is_plain_message(message: Message) -> bool:
+    """Fallback gate: private chat, anything a user sends except /commands.
+    Audio/documents never reach here — ingest_audio is registered first and
+    already replies to those."""
+    return not (message.text or "").startswith("/")
+
+
+async def _cached_quote() -> Optional[dict]:
+    quote = _quote_cache.get("data")
+    if quote and time.time() - _quote_cache.get("ts", 0) < _QUOTE_TTL_SECONDS:
+        return quote
+    from scrape_quote import scrape_quote  # requests-based -> keep off the loop
+
+    try:
+        loop = asyncio.get_running_loop()
+        fresh = await loop.run_in_executor(
+            None, scrape_quote, "https://time.ir/"
+        )  # run_in_executor: works on any py3 version
+    except Exception:  # network/parse hiccup: serve the stale quote if any
+        log.exception("time.ir quote scrape failed")
+        return quote
+    if fresh:
+        _quote_cache.update(data=fresh, ts=time.time())
+        return fresh
+    return quote
+
+
+@router.message(F.chat.type == "private", _is_plain_message)
+async def dm_quote_of_the_day(message: Message) -> None:
+    if message.from_user and message.from_user.is_bot:
+        return
+    quote = await _cached_quote()
+    if not quote:
+        await message.answer(
+            "🙈 Quote service is unreachable right now — try again in a minute.",
+            reply_markup=chart_kb(),
+        )
+        return
+    await message.reply(
+        "💫 <i>«{q}»</i>\n\n— <b>{a}</b>".format(
+            q=html.escape(quote["quote"]),
+            a=html.escape(quote["author"]),
+        ),
+        reply_markup=chart_kb(),
+    )
