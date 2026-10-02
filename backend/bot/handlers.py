@@ -13,13 +13,15 @@ from aiogram.types import (
     InlineKeyboardMarkup,
     LinkPreviewOptions,
     Message,
+    ReactionTypeEmoji,
     WebAppInfo,
 )
+from sqlalchemy import select
 
 from config import settings
 from crud import find_duplicate, get_or_create_user
 from database import SessionLocal
-from models import Song, norm_key
+from models import Song, Vote, norm_key
 
 log = logging.getLogger("persona.handlers")
 
@@ -158,6 +160,103 @@ async def ingest_audio(message: Message) -> None:
         await _ingest(message)
     except Exception:  # pragma: no cover
         log.exception("failed to ingest message %s", message.message_id)
+
+
+# ---------------- rate a song by replying with a number ----------------
+# Replying to a charted audio with ONLY a number (Persian/Arabic/English
+# digits) casts that user's rating: <= 1 means 1 star, > 1 means 5 stars.
+# A green tick reaction on the reply confirms it.
+
+_DIGITS_TABLE = str.maketrans("۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩", "01234567890123456789")
+_ONLY_NUMBER_RE = re.compile(r"^[+-]?\d{1,9}$")
+
+
+def parse_rating_number(text: Optional[str]) -> Optional[int]:
+    """The text must be nothing but a number; returns that number or None."""
+    if not text:
+        return None
+    cleaned = text.replace("\u200c", "").strip().translate(_DIGITS_TABLE)
+    if not _ONLY_NUMBER_RE.match(cleaned):
+        return None
+    return int(cleaned)
+
+
+def _replied_song(db, chat_id: int, target: Message) -> Optional[Song]:
+    """Chart song behind a replied-to message: match by telegram
+    file_unique_id first, then by the stored message id in this chat."""
+    unique_id = None
+    if target.audio:
+        unique_id = target.audio.file_unique_id
+    elif target.document:
+        meta = extract_meta(target)
+        unique_id = meta["file_unique_id"] if meta else None
+    if unique_id:
+        song = db.scalar(select(Song).where(Song.file_unique_id == unique_id))
+        if song:
+            return song
+    return db.scalar(
+        select(Song).where(
+            Song.message_id == target.message_id,
+            Song.chat_id.in_(_chat_id_candidates(chat_id)),
+        )
+    )
+
+
+@router.message(F.chat.type != "private", F.reply_to_message, F.text)
+async def rate_by_number_reply(message: Message) -> None:
+    if message.from_user is None or message.from_user.is_bot:
+        return
+    number = parse_rating_number(message.text)
+    if number is None:
+        return
+    if not _chat_matches(message):
+        return
+
+    value = 1 if number <= 1 else 5
+    db = SessionLocal()
+    try:
+        song = _replied_song(db, message.chat.id, message.reply_to_message)
+        if song is None:
+            return  # replied to something that is not on the chart — stay silent
+        rater = get_or_create_user(
+            db,
+            user_id=message.from_user.id,
+            first_name=message.from_user.first_name or "",
+            last_name=message.from_user.last_name,
+            username=message.from_user.username,
+        )
+        vote = (
+            db.query(Vote)
+            .filter(Vote.song_id == song.id, Vote.user_id == rater.id)
+            .first()
+        )
+        if vote:
+            vote.value = value  # updating a rating earns no extra point
+        else:
+            db.add(Vote(song_id=song.id, user_id=rater.id, value=value))
+            rater.points = (rater.points or 0) + 1
+        db.commit()
+        log.info(
+            "user %s rated song #%s (%s★) via number reply %s",
+            rater.id, song.id, value, message.text,
+        )
+    except Exception:  # pragma: no cover
+        log.exception("number-rating failed for message %s", message.message_id)
+        return
+    finally:
+        db.close()
+
+    try:
+        await message.react([ReactionTypeEmoji(emoji="✅")])
+    except Exception as exc:  # reactions may be disabled in some groups
+        log.info("reaction failed in chat %s: %s", message.chat.id, exc)
+        try:
+            await message.reply(
+                f"⭐ Rated <b>{html.escape(song.title)}</b> — {value}★",
+                link_preview_options=LinkPreviewOptions(is_disabled=True),
+            )
+        except Exception:
+            pass
 
 
 def _chat_id_candidates(cid: int) -> set:
