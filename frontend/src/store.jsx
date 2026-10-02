@@ -8,7 +8,7 @@ import {
   useState,
 } from 'react'
 import api, { clearToken, getToken, setToken } from './lib/api'
-import { isTMA, tgInitData } from './lib/telegram'
+import { isTMA, initTelegram, tgInitData } from './lib/telegram'
 
 const AppCtx = createContext(null)
 export const useApp = () => useContext(AppCtx)
@@ -22,6 +22,7 @@ export function AppProvider({ children }) {
   const [rev, setRev] = useState(0) // bump to refresh dependent views
   const [profileUserId, setProfileUserId] = useState(null) // open profile modal
   const bootRef = useRef(false)
+  const bootstrapRef = useRef(null)
 
   const toast = useCallback((msg, type = 'info') => {
     const id = ++toastId
@@ -67,6 +68,19 @@ export function AppProvider({ children }) {
       }
     }
 
+    // 1b) The Telegram object exists but its init data hasn't arrived yet
+    //     (Desktop injects it slightly after start) — wait and retry once.
+    if (typeof window !== 'undefined' && window.Telegram?.WebApp && !getToken()) {
+      setTimeout(() => {
+        if (isTMA()) {
+          loginWithTelegram().catch(() => {
+            clearToken()
+            setStatus('error')
+          })
+        }
+      }, 1200)
+    }
+
     // 2) OUTSIDE Telegram (plain browser link): reuse a still-valid stored
     //    session (a year long) so returning visitors stay signed in too.
     const token = getToken()
@@ -84,6 +98,17 @@ export function AppProvider({ children }) {
     // 3) No session and not inside Telegram → nothing to log into manually.
     setStatus('error')
   }, [loginWithTelegram])
+
+  bootstrapRef.current = bootstrap
+
+  useEffect(() => {
+    // SDK/theme setup — and re-bootstrap when Telegram data shows up late
+    // (ttminit / late desktop injection / URL), so a slow SDK never means
+    // "sign-in failed".
+    initTelegram(() => {
+      bootstrapRef.current?.()
+    })
+  }, [])
 
   useEffect(() => {
     if (bootRef.current) return

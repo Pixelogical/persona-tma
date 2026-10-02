@@ -77,6 +77,15 @@ def auth_config():
     return {"allow_dev_login": settings.allow_dev_login}
 
 
+@router.get("/auth/lastfm-probe")
+async def lastfm_probe():
+    """Does THIS server reach last.fm? Shows the tags parsed out of a real
+    live response (diagnoses empty tags/genre without reading server logs)."""
+    from lastfm import probe
+
+    return await probe()
+
+
 @router.get("/auth/dev-users")
 def dev_users(db: Session = Depends(get_db)):
     """Quick pick list for using the app in a normal browser."""

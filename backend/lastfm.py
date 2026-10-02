@@ -25,7 +25,11 @@ HEADERS = {
     "Accept": "application/json",
     "Accept-Language": "en-US,en;q=0.9",
 }
-RETRY_AFTER = timedelta(hours=6)  # retry a failed lookup at most this often
+RETRY_AFTER = timedelta(hours=1)  # retry a failed lookup at most this often
+
+# outcome of the most recent last.fm HTTP call — surfaced by the health
+# endpoint so a server-side block (403) is instantly visible.
+last_probe: dict = {"checked_at": None, "status": None, "detail": ""}
 
 
 def _enabled() -> bool:
@@ -45,15 +49,33 @@ async def _call(method: str, **params) -> Optional[dict]:
             resp = await client.get(LASTFM_URL, params=query)
     except Exception as exc:  # network errors must never break the bot
         log.info("last.fm %s request failed: %s", method, exc)
+        last_probe.update(
+            checked_at=datetime.utcnow().isoformat(), status="network-error",
+            detail=str(exc)[:200],
+        )
         return None
     if resp.status_code != 200:
         log.info("last.fm %s -> HTTP %s (blocked/unavailable?)", method, resp.status_code)
+        last_probe.update(
+            checked_at=datetime.utcnow().isoformat(), status=resp.status_code,
+            detail="blocked or unavailable (server IP likely banned)"
+            if resp.status_code == 403
+            else "unexpected response",
+        )
         return None
     try:
         data = resp.json()
     except ValueError:
         log.info("last.fm %s -> non-JSON response", method)
+        last_probe.update(
+            checked_at=datetime.utcnow().isoformat(), status="non-json",
+            detail="proxy/captive portal intercepted the request",
+        )
         return None
+    last_probe.update(
+        checked_at=datetime.utcnow().isoformat(), status=200,
+        detail="ok" if not data.get("error") else f"api error {data.get('error')}",
+    )
     return data if isinstance(data, dict) else None
 
 
@@ -139,6 +161,10 @@ async def enrich_song(song_id: int) -> None:
     tags = list(meta["tags"]) if meta else []
     if not tags and artist:
         tags = await lookup_artist_tags(artist)  # fallback: artist genres
+    log.info(
+        "last.fm enrich song %s (%s — %s): track_found=%s tags=%s",
+        song_id, artist, title, meta is not None, tags or "NONE",
+    )
 
     db = SessionLocal()
     try:
@@ -164,6 +190,22 @@ async def enrich_song(song_id: int) -> None:
             )
     finally:
         db.close()
+
+
+async def probe() -> dict:
+    """Live end-to-end check from THIS server to last.fm (what the enrichment
+    pipeline really experiences) — reported by GET /api/auth/lastfm-probe."""
+    if not _enabled():
+        return {"enabled": False, **last_probe}
+    meta = await lookup_track("Cher", "Believe")
+    return {
+        "enabled": True,
+        "reachable": meta is not None,
+        "tags_from_response": (meta or {}).get("tags", []),
+        "listeners": (meta or {}).get("listeners"),
+        "cover": bool((meta or {}).get("cover")),
+        **last_probe,
+    }
 
 
 async def enrich_pending_once(limit: int = 8) -> int:

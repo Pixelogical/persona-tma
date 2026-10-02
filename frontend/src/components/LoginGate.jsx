@@ -1,4 +1,5 @@
 import React from 'react'
+import { tmaDiag } from '../lib/telegram'
 
 /**
  * Not a login screen — there is no manual login anymore. Users are signed
@@ -7,6 +8,7 @@ import React from 'react'
  * can't identify you (a normal browser without a session).
  */
 export default function LoginGate() {
+  const d = tmaDiag()
   return (
     <div className="min-h-screen flex items-center justify-center p-5">
       <div className="glass rounded-3xl p-8 text-center max-w-sm w-full fade-up">
@@ -23,6 +25,12 @@ export default function LoginGate() {
           Open this app <span className="font-bold">inside Telegram</span> — from
           the Persona group via the 🎧 menu button — and you&apos;ll be in
           instantly.
+        </p>
+        <p
+          className="mt-6 text-[9px] font-mono text-base-content/25 select-all break-all"
+          title="sign-in diagnostics"
+        >
+          {`tg=${d.sdk ? 1 : 0} id=${d.initDataLen} url=${d.urlData ? 1 : 0} pf=${d.platform} v=${d.version} @ ${d.host}`}
         </p>
       </div>
     </div>
