@@ -164,8 +164,8 @@ async def ingest_audio(message: Message) -> None:
 
 # ---------------- rate a song by replying with a number ----------------
 # Replying to a charted audio with ONLY a number (Persian/Arabic/English
-# digits) casts that user's rating: <= 1 means 1 star, > 1 means 5 stars.
-# A green tick reaction on the reply confirms it.
+# digits) casts that user's rating: 1..5 as-is, clamped at 1 and 5.
+# A green tick reaction on the reply confirms it — no text message ever.
 
 _DIGITS_TABLE = str.maketrans("۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩", "01234567890123456789")
 _ONLY_NUMBER_RE = re.compile(r"^[+-]?\d{1,9}$")
@@ -212,7 +212,7 @@ async def rate_by_number_reply(message: Message) -> None:
     if not _chat_matches(message):
         return
 
-    value = 1 if number <= 1 else 5
+    value = min(5, max(1, number))
     db = SessionLocal()
     try:
         song = _replied_song(db, message.chat.id, message.reply_to_message)
@@ -250,13 +250,6 @@ async def rate_by_number_reply(message: Message) -> None:
         await message.react([ReactionTypeEmoji(emoji="✅")])
     except Exception as exc:  # reactions may be disabled in some groups
         log.info("reaction failed in chat %s: %s", message.chat.id, exc)
-        try:
-            await message.reply(
-                f"⭐ Rated <b>{html.escape(song.title)}</b> — {value}★",
-                link_preview_options=LinkPreviewOptions(is_disabled=True),
-            )
-        except Exception:
-            pass
 
 
 def _chat_id_candidates(cid: int) -> set:
