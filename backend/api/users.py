@@ -1,7 +1,7 @@
 from typing import List
 
 import logging
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -78,12 +78,12 @@ def auth_config():
 
 
 @router.get("/auth/lastfm-probe")
-async def lastfm_probe():
-    """Does THIS server reach last.fm? Shows the tags parsed out of a real
-    live response (diagnoses empty tags/genre without reading server logs)."""
+async def lastfm_probe(artist: str = Query(...), track: str = Query(...)):
+    """One live request from THIS server to last.fm for the given track,
+    echoing exactly what the API returned and how it was parsed."""
     from lastfm import probe
 
-    return await probe()
+    return await probe(artist=artist, track=track)
 
 
 @router.get("/auth/dev-users")

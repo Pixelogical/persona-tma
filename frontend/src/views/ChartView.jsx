@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import api, { errMessage } from '../lib/api'
 import { useApp } from '../store'
+import { genreLabel } from '../lib/format'
 import { haptic } from '../lib/telegram'
 import AddToPlaylist from '../components/AddToPlaylist'
 import Leaderboard from '../components/Leaderboard'
@@ -135,7 +136,7 @@ export default function ChartView() {
       <div className="glass rounded-3xl p-10 text-center">
         <div className="text-4xl mb-3">💿</div>
         <div className="font-bold">
-          {tab === 'genres' && genre ? `No songs in “${genre}” yet` : 'Nothing on the chart yet'}
+          {tab === 'genres' && genre ? `No songs in “${genreLabel(genre)}” yet` : 'Nothing on the chart yet'}
         </div>
         <p className="text-xs text-base-content/50 mt-1">
           Send an MP3 in the Persona group — PersonaBot will put it here
@@ -181,7 +182,7 @@ export default function ChartView() {
           >
             <div className="text-2xl">{genreEmoji(g.name)}</div>
             <div className="font-bold text-sm truncate mt-1.5 capitalize">
-              {g.name}
+              {genreLabel(g.name)}
             </div>
             <div className="text-[10px] text-base-content/40 mt-0.5">
               {g.count} track{g.count === 1 ? '' : 's'}
@@ -219,7 +220,7 @@ export default function ChartView() {
                   : 'text-base-content/50'
               }`}
             >
-              <span className="text-xs">{t.icon}</span>
+              <span className="text-xs"></span>
               {t.label}
             </button>
           ))}

@@ -26,6 +26,7 @@ HEADERS = {
     "Accept-Language": "en-US,en;q=0.9",
 }
 RETRY_AFTER = timedelta(hours=1)  # retry a failed lookup at most this often
+NOGENRE = "nogenre"  # stored genre for songs last.fm has no tags for
 
 # outcome of the most recent last.fm HTTP call — surfaced by the health
 # endpoint so a server-side block (403) is instantly visible.
@@ -91,6 +92,7 @@ def _tags_of(data: dict, limit: int = 6) -> List[str]:
             tags.append(name)
         if len(tags) >= limit:
             break
+    print("tags: ", tags)
     return tags
 
 
@@ -107,6 +109,21 @@ def _best_image(owner: dict) -> Optional[str]:
         if by_size.get(size):
             return by_size[size]
     return None
+
+
+def _best_genre(tags: List[str], artist: Optional[str]) -> Optional[str]:
+    """First tag that actually reads as a genre — not the artist's own name
+    (last.fm tags often repeat it, e.g. 'cher'), not a meme tag."""
+    skip = {"seen live", "your tags", "No tags"}
+    artist_words = set((artist or "").lower().replace("-", " ").split())
+    for t in tags:
+        low = t.lower()
+        if low in skip:
+            continue
+        if artist_words and artist_words <= set(low.replace("-", " ").split()):
+            continue
+        return t
+    return tags[0] if tags else None
 
 
 async def lookup_track(artist: Optional[str], title: str) -> Optional[dict]:
@@ -180,8 +197,13 @@ async def enrich_song(song_id: int) -> None:
                 song.cover_url = meta["cover"][:512]
         if tags:
             song.tags = ",".join(tags)[:255]
-            if not song.genre:
-                song.genre = tags[0][:64]
+        best = _best_genre(tags, artist) if tags else None
+        if best and (not song.genre or song.genre == NOGENRE):
+            song.genre = best[:64]
+        elif not song.genre:
+            # last.fm answered but has no genre for this song → bucket it
+            # visibly instead of leaving it unclassified
+            song.genre = NOGENRE
         if changed:
             db.commit()
             log.info(
@@ -192,15 +214,17 @@ async def enrich_song(song_id: int) -> None:
         db.close()
 
 
-async def probe() -> dict:
-    """Live end-to-end check from THIS server to last.fm (what the enrichment
-    pipeline really experiences) — reported by GET /api/auth/lastfm-probe."""
+async def probe(artist: str, track: str) -> dict:
+    """One live track.getinfo from THIS server, echoing exactly what last.fm
+    returned and how it parsed — what GET /api/auth/lastfm-probe reports."""
     if not _enabled():
         return {"enabled": False, **last_probe}
-    meta = await lookup_track("Cher", "Believe")
+    meta = await lookup_track(artist, track)
     return {
         "enabled": True,
+        "query": f"{artist} — {track}",
         "reachable": meta is not None,
+        "found": meta is not None,
         "tags_from_response": (meta or {}).get("tags", []),
         "listeners": (meta or {}).get("listeners"),
         "cover": bool((meta or {}).get("cover")),
@@ -221,7 +245,13 @@ async def enrich_pending_once(limit: int = 8) -> int:
         ids = list(
             db.scalars(
                 select(Song.id)
-                .where(or_(Song.genre.is_(None), Song.genre == ""))
+                .where(
+                    or_(
+                        Song.genre.is_(None),
+                        Song.genre == "",
+                        Song.genre == NOGENRE,  # retry: last.fm may tag it later
+                    )
+                )
                 .where(
                     or_(Song.enriched_at.is_(None), Song.enriched_at < stale)
                 )

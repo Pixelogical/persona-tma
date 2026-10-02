@@ -53,6 +53,26 @@ def get_song(
     return song_to_out(db, song, user)
 
 
+@router.post("/{song_id}/reenrich", response_model=SongOut)
+async def reenrich_song(
+    song_id: int,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Re-run the last.fm lookup for one song right now (ignoring the backoff)
+    and return the updated row. Fixes songs stuck with empty tags/genre."""
+    if db.get(Song, song_id) is None:
+        raise HTTPException(status_code=404, detail="Song not found")
+    from lastfm import enrich_song
+
+    await enrich_song(song_id)
+    db.expire_all()
+    song = db.get(Song, song_id)
+    if song is None:
+        raise HTTPException(status_code=404, detail="Song not found")
+    return song_to_out(db, song, user)
+
+
 @router.post("/{song_id}/vote", response_model=VoteOut)
 def vote_song(
     song_id: int,

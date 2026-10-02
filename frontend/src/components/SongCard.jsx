@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { useApp } from '../store'
-import { displayName, formatCount, formatDuration, timeAgo } from '../lib/format'
+import { displayName, formatCount, formatDuration, genreLabel, timeAgo } from '../lib/format'
 import { haptic } from '../lib/telegram'
 import Avatar from './Avatar'
 import StarRating, { StarsDisplay } from './StarRating'
@@ -80,9 +80,20 @@ export default function SongCard({
           </div>
           <div className="text-xs text-base-content/50 truncate mt-0.5">
             {song.artist || 'Unknown artist'}
-            {song.genre ? ` · ${song.genre}` : ''}
             {formatDuration(song.duration) ? ` · ${formatDuration(song.duration)}` : ''}
           </div>
+          {(song.tags?.length || song.genre) && (
+            <div className="flex flex-wrap items-center gap-1 mt-1">
+              {(song.tags?.length ? song.tags : [song.genre]).slice(0, 3).map((t) => (
+                <span
+                  key={t}
+                  className="px-1.5 py-px rounded-full bg-primary/10 text-primary/90 text-[9px] font-bold uppercase tracking-wide max-w-[110px] truncate"
+                >
+                  {genreLabel(t)}
+                </span>
+              ))}
+            </div>
+          )}
           <div className="flex items-center gap-1.5 mt-1.5">
             <button
               className="flex items-center gap-1.5 min-w-0 rounded-lg hover:bg-base-content/5 px-1 -mx-1"
