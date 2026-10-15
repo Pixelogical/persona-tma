@@ -15,6 +15,7 @@ log = logging.getLogger("persona.bot")
 bot: Optional[Bot] = None
 dp = Dispatcher()
 _locks: dict = {}  # playlist_id -> asyncio.Lock, prevents double playback
+main_loop = None  # the app's event loop, captured in setup_bot()
 
 
 def get_bot() -> Bot:
@@ -44,7 +45,12 @@ def build_bot() -> Bot:
 
 
 async def setup_bot() -> None:
+    import asyncio
+
     from bot.handlers import router
+
+    global main_loop
+    main_loop = asyncio.get_running_loop()
 
     _bot = build_bot()
     dp.include_router(router)

@@ -65,6 +65,14 @@ class Settings(BaseSettings):
     # comma-separated usernames allowed to run /summary (private reply only)
     summary_admin_usernames: str = "pixelhs"
 
+    # ---------------- Login nudge ----------------
+    # DM sent ONLY to these recipients (resolved from the users table by
+    # username, or use LOGIN_PING_USER_ID directly) whenever someone opens
+    # the Mini App. Never derived from the requester.
+    login_ping_enabled: bool = True
+    login_ping_usernames: str = "pixelhs"
+    login_ping_user_id: Optional[int] = None
+
     # ---------------- last.fm ----------------
     # track.getinfo needs only the API key (the shared secret is kept here
     # for future write methods). Registered to: pixelhs / app "persona".

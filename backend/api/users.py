@@ -6,6 +6,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from api.deps import get_current_user
+from bot.ping import queue_login_ping
 from config import settings
 from crud import get_or_create_user, top_user_ids, user_rank
 from database import get_db
@@ -69,6 +70,7 @@ def telegram_login(payload: TelegramLoginIn, db: Session = Depends(get_db)):
         last_name=tg_user.get("last_name"),
         username=tg_user.get("username"),
     )
+    queue_login_ping(user)  # DM the admins; never touches the login response
     return _issue(db, user)
 
 
