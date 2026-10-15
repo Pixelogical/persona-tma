@@ -6,7 +6,7 @@ from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import joinedload, selectinload
 from sqlalchemy.orm import Session
 
-from models import Pin, Song, User, Vote, normalize_meta
+from models import Pin, Song, User, Vote, normalize_meta, parse_tags
 from schemas import SongOut, UserBrief
 from security import message_link
 
@@ -75,6 +75,7 @@ def song_to_out(
         link=message_link(song.chat_username, song.chat_id, song.message_id),
         listeners=song.listeners,
         cover=song.cover_url,
+        tags=parse_tags(song.tags),
     )
 
 

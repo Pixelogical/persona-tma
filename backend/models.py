@@ -26,6 +26,50 @@ def norm_key(title: Optional[str], artist: Optional[str]) -> str:
     return f"{normalize_meta(title)}|{normalize_meta(artist)}"
 
 
+# ---------------- genre tags ----------------
+# Stored comma-separated on Song.tags, normalized to lowercase ascii words
+# joined by underscores ("indie-rock" / "Synth Pop" -> indie_rock, synth_pop).
+MAX_SONG_TAGS = 12
+_HASHTAG_RE = re.compile(r"(?:(?<=\s)|(?<=^))#([A-Za-z][A-Za-z0-9_-]*)")
+_TAG_WORD_JOIN_RE = re.compile(r"[\s\-._]+")
+_TAG_ALLOWED_RE = re.compile(r"[a-z][a-z0-9_]{0,23}")
+
+
+def normalize_tag(raw: Optional[str]) -> Optional[str]:
+    """lowercase, words joined with underscores, english letters/digits only.
+    Returns None when the value is not a usable tag."""
+    tag = _TAG_WORD_JOIN_RE.sub("_", (raw or "").strip().lstrip("#")).lower()
+    tag = re.sub(r"_+", "_", tag).strip("_")
+    return tag if _TAG_ALLOWED_RE.fullmatch(tag) else None
+
+
+def parse_tags(csv: Optional[str]) -> List[str]:
+    return [t for t in (csv or "").split(",") if t]
+
+
+def merge_tags(existing: Optional[str], new_tags: List[str]) -> str:
+    """Existing + new tags, deduped, capped by count and by the 255-char
+    column — order preserved."""
+    out: List[str] = []
+    for tag in parse_tags(existing) + [normalize_tag(t) for t in new_tags]:
+        if not tag or tag in out:
+            continue
+        if len(out) >= MAX_SONG_TAGS or len(",".join(out + [tag])) > 255:
+            break
+        out.append(tag)
+    return ",".join(out)
+
+
+def extract_hashtags(text: Optional[str]) -> List[str]:
+    """English hashtags in order of first appearance (#pop -> pop)."""
+    tags: List[str] = []
+    for match in _HASHTAG_RE.finditer(text or ""):
+        tag = normalize_tag(match.group(1))
+        if tag and tag not in tags:
+            tags.append(tag)
+    return tags
+
+
 def chat_id_variants(cid: int) -> List[int]:
     """The same group id in both forms it appears in: basic-group
     (-3784999585) and supergroup (-1003784999585). The canonical -100

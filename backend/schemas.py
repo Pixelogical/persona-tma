@@ -69,6 +69,11 @@ class SongOut(BaseModel):
     link: Optional[str] = None
     listeners: Optional[int] = None  # global listeners (last.fm)
     cover: Optional[str] = None  # cover art url (last.fm)
+    tags: List[str] = []  # genre tags (#pop -> "pop")
+
+
+class SongTagIn(BaseModel):
+    tag: str = Field(min_length=1, max_length=40)
 
 
 class SongListOut(BaseModel):

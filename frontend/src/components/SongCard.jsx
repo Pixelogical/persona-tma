@@ -1,8 +1,9 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useApp } from '../store'
 import { displayName, formatCount, formatDuration, timeAgo } from '../lib/format'
 import { haptic } from '../lib/telegram'
 import Avatar from './Avatar'
+import SongTags from './SongTags'
 import StarRating, { StarsDisplay } from './StarRating'
 
 function Cover({ song }) {
@@ -38,6 +39,12 @@ export default function SongCard({
   const { openProfile } = useApp()
   const [localStars, setLocalStars] = useState(song.my_vote || 0)
   const [voting, setVoting] = useState(false)
+  const [tags, setTags] = useState(song.tags || [])
+  const [showTags, setShowTags] = useState(false)
+
+  useEffect(() => {
+    setTags(song.tags || [])
+  }, [song.tags])
 
   const vote = async (stars) => {
     if (voting) return
@@ -143,6 +150,25 @@ export default function SongCard({
         </div>
         <div className="flex items-center gap-0.5">
           <button
+            className={`btn btn-xs btn-circle btn-ghost ${
+              tags.length ? 'text-secondary' : 'text-base-content/50'
+            }`}
+            title={
+              tags.length
+                ? `Tags: ${tags.map((t) => `#${t}`).join(', ')}`
+                : 'Tags — add a genre'
+            }
+            onClick={(e) => {
+              e.stopPropagation()
+              haptic('light')
+              setShowTags(true)
+            }}
+          >
+            #{tags.length > 0 && (
+              <span className="text-[8px] font-extrabold">{tags.length}</span>
+            )}
+          </button>
+          <button
             className="btn btn-xs btn-circle btn-ghost text-primary"
             title="Add to playlist"
             onClick={(e) => {
@@ -184,6 +210,15 @@ export default function SongCard({
           )}
         </div>
       </div>
+
+      {showTags && (
+        <SongTags
+          song={song}
+          tags={tags}
+          onTags={setTags}
+          onClose={() => setShowTags(false)}
+        />
+      )}
     </div>
   )
 }

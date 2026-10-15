@@ -21,7 +21,15 @@ from sqlalchemy import select
 from config import settings
 from crud import find_duplicate, get_or_create_user
 from database import SessionLocal
-from models import Song, Vote, chat_id_variants, norm_key
+from models import (
+    Song,
+    Vote,
+    chat_id_variants,
+    extract_hashtags,
+    merge_tags,
+    norm_key,
+    parse_tags,
+)
 
 log = logging.getLogger("persona.handlers")
 
@@ -162,6 +170,46 @@ async def ingest_audio(message: Message) -> None:
         log.exception("failed to ingest message %s", message.message_id)
 
 
+# ---------------- tag a song by replying with hashtags ----------------
+# Replying to a charted audio with English hashtags (#pop #retro_80s)
+# adds those genre tags to the song (normalized: lowercase, underscores).
+# A 🏷 reaction confirms it.
+
+_TAG_REACTION = "🏷"
+
+
+async def _apply_hashtag_tags(message: Message) -> bool:
+    tags = extract_hashtags(message.text)
+    if not tags:
+        return False
+    db = SessionLocal()
+    try:
+        song = _replied_song(db, message.chat.id, message.reply_to_message)
+        if song is None:
+            return False
+        before = parse_tags(song.tags)
+        song.tags = merge_tags(song.tags, tags)
+        added = [t for t in parse_tags(song.tags) if t not in before]
+        db.commit()
+        if added:
+            log.info(
+                "user %s tagged song #%s with %s",
+                message.from_user.id,
+                song.id,
+                ", ".join(added),
+            )
+    except Exception:  # pragma: no cover
+        log.exception("hashtag tagging failed for message %s", message.message_id)
+        return False
+    finally:
+        db.close()
+    try:
+        await message.react([ReactionTypeEmoji(emoji=_TAG_REACTION)])
+    except Exception as exc:  # reactions may be disabled in some groups
+        log.info("reaction failed in chat %s: %s", message.chat.id, exc)
+    return True
+
+
 # ---------------- rate a song by replying with a number ----------------
 # Replying to a charted audio with ONLY a number (Persian/Arabic/English
 # digits) casts that user's rating: 1..5 as-is, clamped at 1 and 5.
@@ -203,13 +251,16 @@ def _replied_song(db, chat_id: int, target: Message) -> Optional[Song]:
 
 
 @router.message(F.chat.type != "private", F.reply_to_message, F.text)
-async def rate_by_number_reply(message: Message) -> None:
+async def reply_to_song(message: Message) -> None:
+    """Every text reply to a charted song lands here: a bare number rates
+    the song, English hashtags (#pop) add genre tags to it."""
     if message.from_user is None or message.from_user.is_bot:
+        return
+    if not _chat_matches(message):
         return
     number = parse_rating_number(message.text)
     if number is None:
-        return
-    if not _chat_matches(message):
+        await _apply_hashtag_tags(message)
         return
 
     value = min(5, max(1, number))
@@ -304,6 +355,7 @@ async def _ingest(message: Message) -> None:
     title = meta["title"] or fallback_title or meta["file_name"] or "Unknown title"
     artist = meta["performer"] or fallback_artist
     key = norm_key(title, artist)
+    caption_tags = extract_hashtags(message.caption)
 
     db = SessionLocal()
     try:
@@ -327,6 +379,13 @@ async def _ingest(message: Message) -> None:
                 sender_name,
                 dup.id,
             )
+            if caption_tags:  # hashtags on a re-share still tag the chart entry
+                tags_before = parse_tags(dup.tags)
+                dup.tags = merge_tags(dup.tags, caption_tags)
+                added = [t for t in parse_tags(dup.tags) if t not in tags_before]
+                if added:
+                    db.commit()
+                    log.info("tagged existing song #%s with %s", dup.id, ", ".join(added))
             skip_note = (
                 "🔁 <b>Already on the chart</b> — "
                 f"<b>{html.escape(title)}</b>"
@@ -352,6 +411,7 @@ async def _ingest(message: Message) -> None:
             artist=artist[:255] if artist else None,
             duration=meta["duration"],
             norm_key=key,
+            tags=merge_tags("", caption_tags) or None,
             sender_id=sender.id,
         )
         db.add(song)

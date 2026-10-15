@@ -4,8 +4,16 @@ from sqlalchemy.orm import Session
 from api.deps import get_current_user
 from crud import paginated_songs, search_songs, song_to_out
 from database import get_db
-from models import Song, User, Vote
-from schemas import SongListOut, SongOut, VoteIn, VoteOut
+from models import (
+    Song,
+    User,
+    Vote,
+    MAX_SONG_TAGS,
+    merge_tags,
+    normalize_tag,
+    parse_tags,
+)
+from schemas import SongListOut, SongOut, SongTagIn, VoteIn, VoteOut
 
 router = APIRouter(prefix="/api/songs", tags=["songs"])
 
@@ -52,6 +60,34 @@ def get_song(
     song = db.get(Song, song_id)
     if song is None:
         raise HTTPException(status_code=404, detail="Song not found")
+    return song_to_out(db, song, user)
+
+
+@router.post("/{song_id}/tags", response_model=SongOut)
+def add_song_tag(
+    song_id: int,
+    payload: SongTagIn,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Add one genre tag from the Mini App — the same normalization applies
+    as for chat hashtags (#pop -> pop, indie-rock -> indie_rock)."""
+    song = db.get(Song, song_id)
+    if song is None:
+        raise HTTPException(status_code=404, detail="Song not found")
+    tag = normalize_tag(payload.tag)
+    if not tag:
+        raise HTTPException(
+            status_code=400,
+            detail="Tag must be English letters/digits, words joined with _ (e.g. pop, indie_rock)",
+        )
+    if tag in parse_tags(song.tags):
+        raise HTTPException(status_code=409, detail=f"“{tag}” is already on this song")
+    merged = merge_tags(song.tags, [tag])
+    if tag not in parse_tags(merged):
+        raise HTTPException(status_code=409, detail=f"At most {MAX_SONG_TAGS} tags per song")
+    song.tags = merged
+    db.commit()
     return song_to_out(db, song, user)
 
 
