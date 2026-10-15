@@ -21,7 +21,7 @@ from sqlalchemy import select
 from config import settings
 from crud import find_duplicate, get_or_create_user
 from database import SessionLocal
-from models import Song, Vote, norm_key
+from models import Song, Vote, chat_id_variants, norm_key
 
 log = logging.getLogger("persona.handlers")
 
@@ -252,16 +252,13 @@ async def rate_by_number_reply(message: Message) -> None:
         log.info("reaction failed in chat %s: %s", message.chat.id, exc)
 
 
-def _chat_id_candidates(cid: int) -> set:
+def _chat_id_candidates(cid: int) -> list:
     """Return the id as-is plus its sibling form across the -100 prefix.
 
     The same group can appear as a basic-group id (-3784999585) or as a
     supergroup id (-1003784999585). Both must be treated as equal.
     """
-    bare = str(cid).lstrip("-")
-    if bare.startswith("100"):
-        return {cid, int("-" + bare[3:])}
-    return {cid, int("-100" + bare)}
+    return chat_id_variants(cid)
 
 
 def _chat_matches(message: Message) -> bool:

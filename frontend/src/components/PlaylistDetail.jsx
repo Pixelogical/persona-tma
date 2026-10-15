@@ -44,7 +44,7 @@ export default function PlaylistDetail({ playlistId, onClose, onDeleted }) {
     try {
       const { data } = await api.post(`/playlists/${playlistId}/play`)
       toast(
-        `📩 “${data.playlist}” — ${data.started} track(s) sent to your chat with the bot`,
+        `📩 “${data.playlist}” — ${data.started} track(s) on the way to your chat with the bot`,
         'success'
       )
     } catch (e) {

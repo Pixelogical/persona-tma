@@ -14,8 +14,10 @@ lastfm module (cover art + global listeners from last.fm, 1 req/sec).
 Respects LASTFM_ENABLED / LASTFM_API_KEY from .env; --no-enrich skips it
 (main.py's backfill scheduler will then pick the songs up on its own).
 
-NOTE: the export has no Telegram file_id, so imported songs show on the
-chart but cannot be sent by the bot's playlist "Play" feature.
+NOTE: the export has no Telegram file_id, so the bot delivers imported
+songs by forwarding the original group message at "Play" time — the bot
+must still be a member of the group, and the chat id is stored in the
+canonical -100 supergroup form the Bot API requires for forwards.
 """
 import argparse
 import asyncio
@@ -31,7 +33,7 @@ from sqlalchemy import select
 from config import settings
 from crud import find_duplicate, get_or_create_user
 from database import SessionLocal, init_db
-from models import Song, norm_key
+from models import Song, chat_id_variants, norm_key
 
 _USER_ID_RE = re.compile(r"^user(\d+)$")
 
@@ -102,7 +104,9 @@ def main() -> int:
     print(f"found {len(messages)} audio message(s) in {path.name}")
 
     init_db()
-    chat_id = settings.persona_chat_id or 0
+    # store the canonical -100 supergroup form — the Bot API rejects the
+    # short form when forwarding these messages later ("chat not found")
+    chat_id = chat_id_variants(settings.persona_chat_id)[0] if settings.persona_chat_id else 0
 
     db = SessionLocal()
     added = 0

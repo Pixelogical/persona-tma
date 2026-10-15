@@ -53,7 +53,7 @@ export default function PlaylistsView() {
     try {
       const { data } = await api.post(`/playlists/${pl.id}/play`)
       toast(
-        `📩 “${data.playlist}” — ${data.started} track(s) sent to your bot chat`,
+        `📩 “${data.playlist}” — ${data.started} track(s) on the way to your bot chat`,
         'success'
       )
     } catch (e) {

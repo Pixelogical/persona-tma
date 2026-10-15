@@ -26,6 +26,17 @@ def norm_key(title: Optional[str], artist: Optional[str]) -> str:
     return f"{normalize_meta(title)}|{normalize_meta(artist)}"
 
 
+def chat_id_variants(cid: int) -> List[int]:
+    """The same group id in both forms it appears in: basic-group
+    (-3784999585) and supergroup (-1003784999585). The canonical -100
+    form comes FIRST — that is the only one the Bot API accepts when
+    forwarding messages out of a supergroup."""
+    bare = str(cid).lstrip("-")
+    if bare.startswith("100"):
+        return [cid, int("-" + bare[3:])]
+    return [int("-100" + bare), cid]
+
+
 class User(Base):
     __tablename__ = "users"
 
