@@ -57,6 +57,14 @@ class Settings(BaseSettings):
     play_max_songs: int = 50
     play_intro: bool = True
 
+    # ---------------- Daily digest (00:00 Tehran) ----------------
+    summary_enabled: bool = True
+    # group to post in; falls back to PERSONA_CHAT_ID when unset
+    summary_chat_id: Optional[int] = None
+    summary_top_count: int = 5
+    # comma-separated usernames allowed to run /summary (private reply only)
+    summary_admin_usernames: str = "pixelhs"
+
     # ---------------- last.fm ----------------
     # track.getinfo needs only the API key (the shared secret is kept here
     # for future write methods). Registered to: pixelhs / app "persona".

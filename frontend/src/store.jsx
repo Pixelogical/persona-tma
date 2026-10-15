@@ -117,6 +117,17 @@ export function AppProvider({ children }) {
   }, [bootstrap])
 
   useEffect(() => {
+    // profile deep links: t.me/<bot>?startapp=profile_<id> (from the daily
+    // digest sender links) or plain ?profile=<id> query when outside TG
+    if (status !== 'ready') return
+    const startapp = window.Telegram?.WebApp?.initDataUnsafe?.startapp || ''
+    const match = /^profile[_-]?(\d+)$/.exec(startapp)
+    const query = new URLSearchParams(window.location.search).get('profile')
+    const id = match ? Number(match[1]) : query && /^\d+$/.test(query) ? Number(query) : null
+    if (id) setProfileUserId(id)
+  }, [status])
+
+  useEffect(() => {
     // a lost/expired session silently re-signs in (Telegram only) —
     // the user never sees a login screen.
     const onUnauthorized = () => {

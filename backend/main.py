@@ -65,8 +65,18 @@ async def lifespan(_: FastAPI):
         enrich_task = asyncio.create_task(run_enrichment_scheduler())
         log.info("last.fm backfill scheduler started")
 
+    # daily chart digest at 00:00 Tehran
+    summary_task = None
+    if settings.summary_enabled:
+        from bot.summary import run_summary_scheduler
+
+        summary_task = asyncio.create_task(run_summary_scheduler())
+        log.info("daily digest scheduler started (00:00 Tehran)")
+
     yield
 
+    if summary_task:
+        summary_task.cancel()
     if enrich_task:
         enrich_task.cancel()
     if poll_task:

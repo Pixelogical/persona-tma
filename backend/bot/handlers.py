@@ -175,6 +175,35 @@ async def cmd_chart(message: Message) -> None:
     )
 
 
+@router.message(Command("summary"))
+async def cmd_summary(message: Message) -> None:
+    """Debug trigger for the daily digest: answers ONLY in the caller's chat
+    (never in the group) and only for the configured admins."""
+    from datetime import datetime, timedelta
+
+    from bot.summary import build_summary_text, now_tehran
+
+    admins = {
+        u.strip().lstrip("@").lower()
+        for u in settings.summary_admin_usernames.split(",")
+        if u.strip()
+    }
+    username = (message.from_user.username or "").lower() if message.from_user else ""
+    if admins and username not in admins:
+        await message.reply("🤫 The digest command is reserved for chart admins.")
+        return
+
+    day = (now_tehran() - timedelta(minutes=1)).date()
+    try:
+        await message.reply(
+            build_summary_text(day),
+            link_preview_options=LinkPreviewOptions(is_disabled=True),
+        )
+    except Exception as exc:  # HTML/link problems must not kill the handler
+        log.exception("summary build failed")
+        await message.reply(f"🙈 Digest failed: {exc}")
+
+
 @router.message(F.content_type.in_({"audio", "document"}))
 async def ingest_audio(message: Message) -> None:
     """Register every mp3 in the chart. Never let a failure skip registration."""
