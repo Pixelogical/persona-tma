@@ -7,6 +7,7 @@ import { useApp } from '../store'
 import Avatar from '../components/Avatar'
 import PlaylistDetail from '../components/PlaylistDetail'
 import { StarsDisplay } from '../components/StarRating'
+import TopsModal from '../components/TopsModal'
 
 export default function PlaylistsView() {
   const { toast, rev, refreshAll } = useApp()
@@ -16,6 +17,7 @@ export default function PlaylistsView() {
   const [name, setName] = useState('')
   const [creating, setCreating] = useState(false)
   const [playBusy, setPlayBusy] = useState(null)
+  const [topsOpen, setTopsOpen] = useState(false)
 
   useEffect(() => {
     api
@@ -145,6 +147,33 @@ export default function PlaylistsView() {
           ))}
         </div>
       )}
+
+      {/* virtual auto-playlist — always the last entry of the list */}
+      <div className="glass rounded-3xl p-4 shadow-card flex items-center gap-3 mt-3 border border-secondary/20 active:scale-[0.98] transition-transform">
+        <div className="w-14 h-14 shrink-0 rounded-2xl bg-gradient-to-br from-warning/50 via-secondary/50 to-primary/50 border border-white/5 flex items-center justify-center text-2xl shadow-inner">
+          🏆
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="font-bold text-sm truncate">Tops of Persona</div>
+          <div className="text-[10px] text-base-content/45 mt-0.5">
+            Auto playlist · pick the filters, the chart fills it
+          </div>
+        </div>
+        <button
+          onClick={() => {
+            haptic('light')
+            setTopsOpen(true)
+          }}
+          className="btn btn-sm btn-circle bg-gradient-to-br from-primary to-secondary border-0 text-white self-center shadow-glow shrink-0"
+          title="Choose filters and send the top tracks to your chat"
+        >
+          <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor">
+            <path d="M8 5v14l11-7z" />
+          </svg>
+        </button>
+      </div>
+
+      {topsOpen && <TopsModal onClose={() => setTopsOpen(false)} />}
 
       {createOpen && (
         <div className="modal modal-open">

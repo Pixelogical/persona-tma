@@ -5,9 +5,9 @@ from sqlalchemy.orm import Session, joinedload
 
 from api.deps import get_current_user
 from bot.bot import playlist_lock
-from bot.playback import play_playlist
+from bot.playback import TOPS_LOCK_KEY, TOPS_NAME, play_playlist, play_tops
 from config import settings
-from crud import song_to_out
+from crud import song_to_out, tops_songs
 from database import get_db
 from models import Playlist, PlaylistSong, Song, User
 from schemas import (
@@ -17,6 +17,7 @@ from schemas import (
     PlaylistDetailOut,
     PlaylistOut,
     PlaylistSongOut,
+    TopsPlayIn,
 )
 
 router = APIRouter(prefix="/api/playlists", tags=["playlists"])
@@ -96,6 +97,67 @@ def create_playlist(
     db.commit()
     db.refresh(pl)
     return _playlist_out(db, pl, user)
+
+
+@router.post("/tops/play", response_model=PlayOut)
+async def start_tops_playback(
+    payload: TopsPlayIn,
+    background: BackgroundTasks,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Stream the "Tops of Persona" auto-playlist — songs matching the
+    user-picked filters — into their DM with the bot, exactly like a
+    regular playlist play."""
+    from aiogram.exceptions import TelegramForbiddenError
+
+    from bot.bot import get_bot
+
+    matching = tops_songs(
+        db, payload.min_avg, payload.min_votes, payload.max_tracks, False
+    )
+    if not matching:
+        raise HTTPException(status_code=400, detail="No songs match those filters")
+    if playlist_lock(TOPS_LOCK_KEY).locked():
+        raise HTTPException(status_code=409, detail=f"{TOPS_NAME} is already playing")
+
+    try:
+        await get_bot().send_chat_action(user.id, "typing")
+    except TelegramForbiddenError:
+        # deep link carries the filters so pressing Start replays the same list
+        code = (
+            f"tops_{round(payload.min_avg * 10)}_{payload.min_votes}"
+            f"_{payload.max_tracks}_{1 if payload.shuffle else 0}"
+        )
+        try:
+            start_link = f"https://t.me/{get_bot().me.username}?start={code}"
+        except Exception:
+            start_link = None
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "msg": "You need to press Start in the bot's private chat first",
+                "need_start": True,
+                "start_link": start_link,
+            },
+        )
+    except RuntimeError:
+        raise HTTPException(status_code=503, detail="Bot is not running")
+
+    background.add_task(
+        play_tops,
+        user.id,
+        payload.min_avg,
+        payload.min_votes,
+        payload.max_tracks,
+        payload.shuffle,
+    )
+    return PlayOut(
+        ok=True,
+        playlist=TOPS_NAME,
+        started=min(len(matching), settings.play_max_songs),
+        interval=settings.play_song_interval,
+    )
 
 
 @router.get("/{playlist_id}", response_model=PlaylistDetailOut)

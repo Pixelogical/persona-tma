@@ -107,6 +107,20 @@ async def cmd_start_deep_link(message: Message, deep_link: str) -> None:
     finally:
         db.close()
 
+    if deep_link.startswith("tops"):
+        # tops_40_3_50_1 — filtered "Tops of Persona" picked in the Mini App
+        from bot.playback import TOPS_NAME, parse_tops_deep_link, play_tops
+
+        filters = parse_tops_deep_link(deep_link)
+        await message.answer(
+            f"▶️ Starting <b>{TOPS_NAME}</b> "
+            f"(≥{filters[0]:.1f}★ by ≥{filters[1]} voters"
+            + (", shuffled" if filters[3] else "")
+            + ") — enjoy! 🎧"
+        )
+        asyncio.create_task(play_tops(message.from_user.id, *filters))
+        return
+
     if not deep_link.startswith("play_"):
         await cmd_start(message)
         return

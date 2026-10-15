@@ -67,7 +67,7 @@ export default function PlaylistDetail({ playlistId, onClose, onDeleted }) {
 
   return (
     <div className="modal modal-open">
-      <div className="modal-box glass max-w-lg max-h-[85vh] border border-base-content/10 flex flex-col">
+      <div className="modal-box glass max-w-lg border border-base-content/10 flex flex-col">
         {playlist ? (
           <>
             <div className="flex items-start gap-3 pr-6">

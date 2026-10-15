@@ -1,4 +1,5 @@
 import math
+import random
 from datetime import datetime, timedelta
 from typing import List, Optional
 
@@ -184,6 +185,28 @@ def search_songs(
         reverse=True,
     )
     return [song_to_out(db, s, me) for s in songs[:limit]]
+
+
+def tops_songs(
+    db: Session,
+    min_avg: float,
+    min_votes: int,
+    max_tracks: int,
+    shuffle: bool,
+) -> List[Song]:
+    """The "Tops of Persona" auto-playlist: songs rated at least min_avg
+    stars by at least min_votes voters, best rating first (vote count as
+    tiebreaker), cut to max_tracks, optionally shuffled."""
+    hits = [
+        s
+        for s in _load_songs(db)
+        if s.vote_count >= min_votes and s.avg_rating >= min_avg - 1e-9
+    ]
+    hits.sort(key=lambda s: (s.avg_rating, s.vote_count), reverse=True)
+    hits = hits[: max(1, max_tracks)]
+    if shuffle:
+        random.shuffle(hits)
+    return hits
 
 
 def top_user_ids(db: Session, n: int = 3) -> List[int]:

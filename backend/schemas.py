@@ -142,6 +142,15 @@ class PlayOut(BaseModel):
     interval: float
 
 
+class TopsPlayIn(BaseModel):
+    """Filters for the "Tops of Persona" auto-playlist."""
+
+    min_avg: float = Field(default=4.0, ge=1.0, le=5.0)
+    min_votes: int = Field(default=3, ge=1, le=1000)
+    max_tracks: int = Field(default=50, ge=1, le=50)
+    shuffle: bool = False
+
+
 class PinOut(BaseModel):
     id: int
     song: SongOut
