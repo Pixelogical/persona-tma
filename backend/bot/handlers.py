@@ -247,7 +247,7 @@ async def rate_by_number_reply(message: Message) -> None:
         db.close()
 
     try:
-        await message.react([ReactionTypeEmoji(emoji="✅")])
+        await message.react([ReactionTypeEmoji(emoji="🔥")])
     except Exception as exc:  # reactions may be disabled in some groups
         log.info("reaction failed in chat %s: %s", message.chat.id, exc)
 

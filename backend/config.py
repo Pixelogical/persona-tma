@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     )
 
     # ---------------- Telegram ----------------
-    bot_token: str = "1858481331:AAFYDXqiWrnxegbgZRL6fp6EOT5VP2mCzYs"
+    bot_token: str = "8816880964:AAGLxPGLM-3K-CJ0TqRZ5EIcPW-4jd3C54A"
     api_id: int = 0
     api_hash: str = ""
 
@@ -30,7 +30,7 @@ class Settings(BaseSettings):
     # Only ingest audio from this chat when set (e.g. -1001234567890).
     # Group ids are matched tolerant of the supergroup form:
     # -3784999585 and -1003784999585 are treated as the SAME group.
-    persona_chat_id: Optional[int] = -3784999585
+    persona_chat_id: Optional[int] = -3816100121
     # How to decide which chat songs come from:
     #   0 = match by PERSONA_CHAT_ID (default)
     #   1 = match by GROUP_NAME (chat title, case/whitespace insensitive)
