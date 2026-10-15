@@ -1,21 +1,24 @@
 import React from 'react'
+import Portal from './Portal'
 import ProfileSheet from './ProfileSheet'
 
 export default function ProfileModal({ userId, onClose }) {
   if (!userId) return null
   return (
-    <div className="modal modal-open animate-fadein">
-      <div className="modal-box glass max-w-md border border-base-content/10">
-        <button
-          className="btn btn-sm btn-circle btn-ghost absolute right-3 top-3 z-10"
-          onClick={onClose}
-          aria-label="Close"
-        >
-          ✕
-        </button>
-        <ProfileSheet key={userId} userId={userId} />
+    <Portal>
+      <div className="modal modal-open animate-fadein">
+        <div className="modal-box glass max-w-md border border-base-content/10">
+          <button
+            className="btn btn-sm btn-circle btn-ghost absolute right-3 top-3 z-10"
+            onClick={onClose}
+            aria-label="Close"
+          >
+            ✕
+          </button>
+          <ProfileSheet key={userId} userId={userId} />
+        </div>
+        <div className="modal-backdrop pointer-events-none" />
       </div>
-      <div className="modal-backdrop pointer-events-none" />
-    </div>
+    </Portal>
   )
 }

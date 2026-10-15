@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import api, { errMessage } from '../lib/api'
+import Portal from './Portal'
 import { useApp } from '../store'
 import PlaylistDetail from './PlaylistDetail'
 
@@ -55,6 +56,7 @@ export default function AddToPlaylist({ song, onClose }) {
   }
 
   return (
+    <Portal>
     <div className="modal modal-open animate-fadein">
       <div className="modal-box glass max-w-md border border-base-content/10">
         <h3 className="font-bold text-lg truncate pr-8">
@@ -138,5 +140,6 @@ export default function AddToPlaylist({ song, onClose }) {
       </div>
       <div className="modal-backdrop pointer-events-none" />
     </div>
+    </Portal>
   )
 }

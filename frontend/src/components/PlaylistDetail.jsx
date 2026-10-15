@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react'
 import api, { errMessage } from '../lib/api'
 import { handleNeedStart } from '../lib/play'
-import { useApp } from '../store'
 import { displayName, formatDuration } from '../lib/format'
 import Avatar from './Avatar'
+import Portal from './Portal'
 import { StarsDisplay } from './StarRating'
+import { useApp } from '../store'
 
 export default function PlaylistDetail({ playlistId, onClose, onDeleted }) {
   const { toast, refreshAll, me } = useApp()
@@ -66,6 +67,7 @@ export default function PlaylistDetail({ playlistId, onClose, onDeleted }) {
   }
 
   return (
+    <Portal>
     <div className="modal modal-open">
       <div className="modal-box glass max-w-lg border border-base-content/10 flex flex-col">
         {playlist ? (
@@ -170,5 +172,6 @@ export default function PlaylistDetail({ playlistId, onClose, onDeleted }) {
       </div>
       <div className="modal-backdrop pointer-events-none" onClick={onClose} />
     </div>
+    </Portal>
   )
 }

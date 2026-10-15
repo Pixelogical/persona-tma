@@ -35,6 +35,7 @@ body {
   height: 100dvh;
   padding: 0.75rem;
   align-items: center;
+  z-index: 1050; /* above the sticky header (30) and the bottom nav (40) */
 }
 
 .modal-box {
@@ -67,8 +68,11 @@ body {
   scrollbar-width: none;
 }
 
+/* fill-mode "backwards" (not "both"): a retained transform would turn this
+   element into the containing block of position:fixed descendants and
+   break any modal rendered inside the view */
 .fade-up {
-  animation: fadeUp 0.45s ease both;
+  animation: fadeUp 0.45s ease backwards;
 }
 
 @keyframes fadeUp {
@@ -79,6 +83,17 @@ body {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+/* used by the modal overlays (class was referenced but never defined) */
+.animate-fadein {
+  animation: fadeIn 0.22s ease backwards;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
   }
 }
 

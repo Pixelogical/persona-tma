@@ -6,6 +6,7 @@ import { haptic } from '../lib/telegram'
 import { useApp } from '../store'
 import Avatar from '../components/Avatar'
 import PlaylistDetail from '../components/PlaylistDetail'
+import Portal from '../components/Portal'
 import { StarsDisplay } from '../components/StarRating'
 import TopsModal from '../components/TopsModal'
 
@@ -176,6 +177,7 @@ export default function PlaylistsView() {
       {topsOpen && <TopsModal onClose={() => setTopsOpen(false)} />}
 
       {createOpen && (
+        <Portal>
         <div className="modal modal-open">
           <form onSubmit={create} className="modal-box glass border border-base-content/10 max-w-sm">
             <h3 className="font-bold text-lg">New playlist</h3>
@@ -213,6 +215,7 @@ export default function PlaylistsView() {
           </form>
           <div className="modal-backdrop pointer-events-none" />
         </div>
+        </Portal>
       )}
 
       {openId && (

@@ -1,7 +1,8 @@
 import React, { useState } from 'react'
 import api, { errMessage } from '../lib/api'
-import { useApp } from '../store'
 import { haptic } from '../lib/telegram'
+import Portal from './Portal'
+import { useApp } from '../store'
 
 export default function SongTags({ song, tags, onTags, onClose }) {
   const { toast } = useApp()
@@ -28,6 +29,7 @@ export default function SongTags({ song, tags, onTags, onClose }) {
   }
 
   return (
+    <Portal>
     <div className="modal modal-open animate-fadein">
       <div className="modal-box glass max-w-md border border-base-content/10">
         <h3 className="font-bold text-lg truncate pr-8">
@@ -87,5 +89,6 @@ export default function SongTags({ song, tags, onTags, onClose }) {
       </div>
       <div className="modal-backdrop pointer-events-none" />
     </div>
+    </Portal>
   )
 }

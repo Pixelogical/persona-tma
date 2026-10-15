@@ -12,7 +12,7 @@ const ICONS = { success: '✓', error: '✕', info: 'ℹ', warning: '⚠' }
 export default function Toasts({ toasts }) {
   if (!toasts.length) return null
   return (
-    <div className="toast toast-top toast-center z-[100] w-[92%] max-w-sm">
+    <div className="toast toast-top toast-center z-[1100] w-[92%] max-w-sm">
       {toasts.map((t) => (
         <div
           key={t.id}
