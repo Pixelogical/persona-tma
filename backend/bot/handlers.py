@@ -179,9 +179,7 @@ async def cmd_chart(message: Message) -> None:
 async def cmd_summary(message: Message) -> None:
     """Debug trigger for the daily digest: answers ONLY in the caller's chat
     (never in the group) and only for the configured admins."""
-    from datetime import datetime, timedelta
-
-    from bot.summary import build_summary_text, now_tehran
+    from bot.summary import build_summary_text, previous_tehran_day
 
     admins = {
         u.strip().lstrip("@").lower()
@@ -193,7 +191,7 @@ async def cmd_summary(message: Message) -> None:
         await message.reply("🤫 The digest command is reserved for chart admins.")
         return
 
-    day = (now_tehran() - timedelta(minutes=1)).date()
+    day = previous_tehran_day()  # the day that has passed, never the fresh one
     try:
         await message.reply(
             build_summary_text(day),

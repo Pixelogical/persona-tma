@@ -48,6 +48,12 @@ def now_tehran() -> datetime:
     return datetime.now(TEHRAN)
 
 
+def previous_tehran_day() -> date:
+    """The calendar day that has passed — even when called at exactly
+    00:00:xx, when "now" already belongs to the new day."""
+    return (now_tehran() - timedelta(days=1)).date()
+
+
 def tehran_day_bounds_utc(day: date) -> tuple:
     """Naive-UTC [start, end) window covering one Tehran calendar day."""
     start = datetime.combine(day, time.min, tzinfo=TEHRAN)
@@ -59,16 +65,14 @@ def tehran_day_bounds_utc(day: date) -> tuple:
     )
 
 
-def profile_link(user_id: int) -> str:
-    """Deep link that opens the Mini App straight on that user's profile."""
-    try:
-        username = get_bot().me.username
-    except Exception:
-        username = None
+def _sender_anchor(song: Song) -> str:
+    """Sender name linking to their Telegram profile; songs from members
+    without a public username stay plain text."""
+    name = html.escape(song.sender.display_name)
+    username = song.sender.username
     if username:
-        return f"https://t.me/{username}?startapp=profile_{user_id}"
-    base = (settings.webapp_url or "").rstrip("/") or "https://t.me"
-    return f"{base}/?profile={user_id}"
+        return f'<a href="https://t.me/{html.escape(username)}">{name}</a>'
+    return name
 
 
 def _song_line(song: Song, prefix: str) -> str:
@@ -76,11 +80,7 @@ def _song_line(song: Song, prefix: str) -> str:
     if song.artist:
         title += f" — {html.escape(song.artist)}"
     link = message_link(song.chat_username, song.chat_id, song.message_id)
-    sender = html.escape(song.sender.display_name)
-    line = (
-        f"{prefix}🎵 <a href=\"{link}\">{title}</a>"
-        f" · <a href=\"{profile_link(song.sender_id)}\">{sender}</a>"
-    )
+    line = f"{prefix}🎵 <a href=\"{link}\">{title}</a> · {_sender_anchor(song)}"
     if song.vote_count:
         votes = "vote" if song.vote_count == 1 else "votes"
         line += f" · ⭐ {song.avg_rating:.1f} · {song.vote_count} {votes}"
@@ -130,12 +130,12 @@ def build_summary_text(day: date) -> str:
 
 async def send_daily_summary(target_day: Optional[date] = None) -> bool:
     """Post the digest into the group chat. Default target: the Tehran day
-    that just ended (scheduled at 00:00) or today when run any other time."""
+    that has just passed (yesterday's chart activity)."""
     chat = settings.summary_chat_id or settings.persona_chat_id
     if not chat:
         log.warning("summary skipped: no SUMMARY_CHAT_ID / PERSONA_CHAT_ID set")
         return False
-    day = target_day or (now_tehran() - timedelta(minutes=1)).date()
+    day = target_day or previous_tehran_day()
     text = build_summary_text(day)
 
     bot = get_bot()
