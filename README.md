@@ -1,3 +1,8 @@
+docker compose stop backend
+docker compose run --rm backend python migrate_db.py --dry-run
+docker compose run --rm backend python migrate_db.py
+docker compose up -d backend
+
 # 🎧 Persona — Telegram Mini App Music Chart
 
 A Telegram Mini App (TMA) for the **Persona** group, powered by **PersonaBot**.
@@ -165,3 +170,5 @@ POST /api/playlists/{id}/play  sends every track to your DM with the bot, in ord
 Every new cast vote gives the voter **1 point** — points drive the podium and the
 top-3 "pin power". Editing a vote you already made updates the rating but gives
 no extra point.
+
+
