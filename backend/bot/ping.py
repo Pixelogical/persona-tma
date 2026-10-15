@@ -109,6 +109,7 @@ async def _ping(user_id: int) -> None:
         for admin_id in admins:
             try:
                 await get_bot().send_message(admin_id, text)
+                log.info("login ping delivered: user %s -> admin %s", user_id, admin_id)
             except TelegramAPIError as exc:
                 log.info("login ping to %s failed: %s", admin_id, exc)
     except Exception:  # pragma: no cover — a nudge must never take anything down

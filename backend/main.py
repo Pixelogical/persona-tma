@@ -106,10 +106,25 @@ app.include_router(api_router)
 
 @app.get("/api/health")
 def health():
+    from bot.ping import admin_chat_ids
+
+    ping = {
+        "enabled": settings.login_ping_enabled,
+        "usernames": [
+            u.strip() for u in settings.login_ping_usernames.split(",") if u.strip()
+        ],
+    }
+    try:
+        # admins actually resolvable in the DB right now — 0 means the
+        # nudge has no destination and stays silent
+        ping["admins"] = len(admin_chat_ids()) if ping["enabled"] else 0
+    except Exception:
+        ping["admins"] = -1
     return {
         "status": "ok",
         "bot_ready": bot_module.bot is not None,
         "proxy": bool(settings.proxy),
+        "login_ping": ping,
     }
 
 
