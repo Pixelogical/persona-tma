@@ -118,13 +118,13 @@ def build_summary_text(day: date) -> str:
         parts.append(f"… and {len(day_songs) - settings.summary_top_count} more 🎶")
 
     parts.append("")
-    if top:
-        parts.append("🏆 <b>Top of all time</b>")
-        for index, song in enumerate(top):
-            prefix = MEDALS[index] if index < 3 else f"{index + 1}."
-            parts.append(_song_line(song, f"{prefix} "))
-    else:
-        parts.append("🏆 Nobody has rated a track yet — cast the first ⭐!")
+    # if top:
+    #     parts.append("🏆 <b>Top of all time</b>")
+    #     for index, song in enumerate(top):
+    #         prefix = MEDALS[index] if index < 3 else f"{index + 1}."
+    #         parts.append(_song_line(song, f"{prefix} "))
+    # else:
+    #     parts.append("🏆 Nobody has rated a track yet — cast the first ⭐!")
     return "\n".join(parts)
 
 
