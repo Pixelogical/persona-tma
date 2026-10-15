@@ -72,6 +72,9 @@ class Settings(BaseSettings):
     login_ping_enabled: bool = True
     login_ping_usernames: str = "pixelhs"
     login_ping_user_id: Optional[int] = None
+    # minimum seconds between two nudges for the same user (the Mini App
+    # silently re-authenticates a few times per open — this collapses them)
+    login_ping_debounce_sec: int = 10
 
     # ---------------- last.fm ----------------
     # track.getinfo needs only the API key (the shared secret is kept here

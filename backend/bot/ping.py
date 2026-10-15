@@ -25,8 +25,11 @@ from models import User
 
 log = logging.getLogger("persona.ping")
 
-DEBOUNCE = timedelta(seconds=90)
 _last_ping: Dict[int, datetime] = {}
+
+
+def debounce() -> timedelta:
+    return timedelta(seconds=max(0, settings.login_ping_debounce_sec))
 
 
 def admin_chat_ids() -> List[int]:
@@ -62,9 +65,15 @@ def queue_login_ping(user: User) -> None:
     if not settings.login_ping_enabled:
         return
     now = datetime.utcnow()
+    window = debounce()
     last = _last_ping.get(user.id)
-    if last and now - last < DEBOUNCE:
+    if last and now - last < window:
+        log.info(
+            "login ping debounced: user %s pinged %ss ago (window %ss)",
+            user.id, int((now - last).total_seconds()), int(window.total_seconds()),
+        )
         return
+    log.info("login ping triggered by user %s", user.id)
     _last_ping[user.id] = now
     loop = bot_module.main_loop
     if loop is None or loop.is_closed():
@@ -79,8 +88,12 @@ def queue_login_ping(user: User) -> None:
 async def _ping(user_id: int) -> None:
     try:
         admins = admin_chat_ids()
-        if not admins or user_id in admins:
-            return  # admins logging in are not their own page boys
+        if not admins:
+            log.info("login ping skipped: no admins resolvable")
+            return
+        if user_id in admins:
+            log.info("login ping skipped: user %s is an admin (self-login)", user_id)
+            return
         db = SessionLocal()
         try:
             u = db.get(User, user_id)

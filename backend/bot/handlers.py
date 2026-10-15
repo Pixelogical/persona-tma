@@ -202,6 +202,42 @@ async def cmd_summary(message: Message) -> None:
         await message.reply(f"🙈 Digest failed: {exc}")
 
 
+@router.message(Command("pingtest"), F.chat.type == "private")
+async def cmd_pingtest(message: Message) -> None:
+    """Login-nudge self-check for admins: proves the bot can DM them here
+    and shows how the nudge config currently resolves."""
+    from bot.ping import admin_chat_ids
+
+    admins = admin_chat_ids()
+    who = message.from_user.id if message.from_user else None
+    names = {
+        u.strip().lstrip("@").lower()
+        for u in settings.login_ping_usernames.split(",")
+        if u.strip()
+    }
+    uname = (message.from_user.username or "").lower() if message.from_user else ""
+    if who not in admins and uname not in names:
+        await message.reply("🤫 Reserved for chart admins.")
+        return
+    state = [
+        "✅ I can DM you here — delivery channel works. If a login still "
+        "stays silent: <code>docker compose logs backend | grep \"login ping\"</code>"
+    ]
+    if who not in admins:
+        state.append(
+            f"⚠️ your id <code>{who}</code> is NOT in the resolved admin list "
+            f"<code>{admins}</code> — open the Mini App once so your username "
+            "lands in the DB, or set <code>LOGIN_PING_USER_ID</code> in .env"
+        )
+    else:
+        state.append(f"✅ admins resolved: <code>{admins}</code>")
+    state.append(
+        f"login ping enabled: <b>{str(settings.login_ping_enabled).lower()}</b> · "
+        f"self-logins and logins within {settings.login_ping_debounce_sec}s never ping"
+    )
+    await message.reply("\n".join(state))
+
+
 @router.message(F.content_type.in_({"audio", "document"}))
 async def ingest_audio(message: Message) -> None:
     """Register every mp3 in the chart. Never let a failure skip registration."""
