@@ -89,6 +89,9 @@ export function AppProvider({ children }) {
         const { data } = await api.get('/me')
         setMe(data)
         setStatus('ready')
+        // tell the bot about this open (admins get the login nudge even
+        // when the client reuses a stored session instead of logging in)
+        api.post('/me/opened').catch(() => {})
         return
       } catch {
         clearToken()

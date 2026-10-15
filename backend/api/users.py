@@ -118,6 +118,13 @@ def me(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     return _me_out(db, user, set(top_user_ids(db)))
 
 
+@router.post("/me/opened", status_code=204)
+def session_opened(user: User = Depends(get_current_user)):
+    """Client fires this once per app open when it reuses a stored session
+    instead of logging in — admins still get the login nudge."""
+    queue_login_ping(user)
+
+
 @router.get("/users/top", response_model=List[LeaderboardEntry])
 def leaderboard(db: Session = Depends(get_db)):
     rows = db.execute(
